@@ -39,3 +39,8 @@
 
 # debug information files
 *.dwo
+
+#specific files
+/build
+/out
+/.vs

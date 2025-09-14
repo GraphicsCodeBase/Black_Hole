@@ -11,7 +11,7 @@ include_directories(${PROJECT_SOURCE_DIR}/Header)
 file(GLOB SRC_FILES src/*.cpp)   # All cpp files in src/
 
 # Create executable
-add_executable(BlackHoleRayTracer ${SRC_FILES})
+add_executable(BlackHoleRayTracer ${SRC_FILES} "src/Graphics.cpp")
 
 # Find packages via vcpkg
 find_package(glfw3 REQUIRED)

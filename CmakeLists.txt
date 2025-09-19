@@ -4,25 +4,29 @@ project(BlackHoleRayTracer)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Tell CMake where your headers live
-include_directories(${PROJECT_SOURCE_DIR}/Header)
-
 # Source files
-file(GLOB SRC_FILES src/*.cpp)   # All cpp files in src/
+file(GLOB SRC_FILES src/*.cpp)
 
 # Create executable
-add_executable(BlackHoleRayTracer ${SRC_FILES} "src/Graphics.cpp")
+add_executable(BlackHoleRayTracer ${SRC_FILES} "src/Mesh.cpp")
 
 # Find packages via vcpkg
-find_package(glfw3 REQUIRED)
-find_package(glm REQUIRED)
-find_package(glad REQUIRED)
+find_package(glfw3 CONFIG REQUIRED) 
+find_package(glm CONFIG REQUIRED)
+find_package(glad CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
+
+# Tell CMake where your headers live
+target_include_directories(BlackHoleRayTracer
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/Headers
+)
 
 # Link libraries
 target_link_libraries(BlackHoleRayTracer
-    glfw
-    glad::glad
-    glm::glm
-    OpenGL::GL
+    PRIVATE
+        glfw
+        glad::glad
+        glm::glm
+        OpenGL::GL
 )

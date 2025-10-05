@@ -8,6 +8,5 @@ class Mesh
 	Mesh(float* vertices, size_t size);
 
 	void draw();
-
 };
 

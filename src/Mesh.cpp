@@ -15,6 +15,7 @@ Mesh::Mesh(float* vertices, size_t size)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
+
 //draw function.
 void Mesh::draw()
 {

@@ -1,7 +1,11 @@
 #include <Mesh.hpp>
 //mesh constructor
-Mesh::Mesh(float* vertices, size_t size)
+ // General constructor: pass stride (in bytes) and attribute layout info
+Mesh::Mesh(float* vertices, size_t size, GLsizei count,
+    const std::vector<std::pair<GLuint, GLint>>& attributes, GLsizei stride)
 {
+    vertexCount = count;
+
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
@@ -9,14 +13,18 @@ Mesh::Mesh(float* vertices, size_t size)
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    for (size_t i = 0; i < attributes.size(); ++i)
+    {
+        GLuint index = attributes[i].first;   // attribute location
+        GLint sizeAttr = attributes[i].second; // number of floats
+        GLintptr offset = 0;
+        for (size_t j = 0; j < i; ++j)
+            offset += attributes[j].second * sizeof(float);
 
-    // Colors (location = 1)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+        glVertexAttribPointer(index, sizeAttr, GL_FLOAT, GL_FALSE, stride, (void*)offset);
+        glEnableVertexAttribArray(index);
+    }
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
@@ -24,7 +32,7 @@ Mesh::Mesh(float* vertices, size_t size)
 void Mesh::draw()
 {
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 3); // 6 vertices = 2 triangles = full quad
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     glBindVertexArray(0);
 }
 

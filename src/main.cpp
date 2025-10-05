@@ -53,36 +53,37 @@ int main()
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    //make a simple triangle in 2D 
-    float vertices[] = {
-        // positions        // colors
-         0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f, // top (red)
-        -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, // left (green)
-         0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f  // right (blue)
-    };
-    //make a mesh
-    Mesh triangle(vertices, sizeof(vertices));
+    ////make a simple triangle in 2D 
+    //float vertices[] = {
+    //    // positions        // colors
+    //     0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f, // top (red)
+    //    -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, // left (green)
+    //     0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f  // right (blue)
+    //};
+    ////make a mesh
+    //Mesh triangle(vertices, sizeof(vertices));
     //make shaders
+    float quadVertices[] = {
+        // positions    // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
+    Mesh quad(
+        quadVertices,
+        sizeof(quadVertices),
+        6, // 6 vertices
+        { {0,2},{1,2} }, // attributes: location 0=pos(2), location 1=UV(2)
+        4 * sizeof(float) // stride
+    );
+
     std::string vertCode = Shader::LoadShaderFromFile(vertShader);
     std::string fragCode = Shader::LoadShaderFromFile(fragShader);
     Shader mainShader(vertCode, fragCode);
-
-    // Model matrix — identity, triangle stays in place
-    glm::mat4 model = glm::mat4(1.0f);
-
-    // View matrix — camera at z=3 looking at origin
-    glm::mat4 view = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, 3.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 1.0f, 0.0f)
-    );
-
-    // Ortho projection — cube from -1 to 1 in XY
-    glm::mat4 projection = glm::ortho(
-        -1.0f, 1.0f,   // left, right
-        -1.0f, 1.0f,   // bottom, top
-        0.1f, 100.0f   // near, far
-    );
 
    
     // Main render loop
@@ -94,11 +95,9 @@ int main()
 
         //bind shader
         mainShader.Use();
-        //pass in uniforms
-        mainShader.SetMat4("u_Model", model);
-        mainShader.SetMat4("u_View", view);
-        mainShader.SetMat4("u_Projection", projection);
-        triangle.draw();
+    
+        //triangle.draw();
+        quad.draw();
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);

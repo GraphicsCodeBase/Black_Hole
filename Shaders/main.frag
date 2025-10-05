@@ -1,9 +1,9 @@
 #version 450 core
-
-in vec3 vColor;
+in vec2 TexCoords;
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(vColor, 1.0);
+    // Example: simple gradient
+    FragColor = vec4(TexCoords, 0.5, 1.0);
 }

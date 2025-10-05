@@ -3,6 +3,7 @@
 
 class Mesh
 {
+	public:
 	unsigned int VAO, VBO;
 	//constructor
 	Mesh(float* vertices, size_t size);

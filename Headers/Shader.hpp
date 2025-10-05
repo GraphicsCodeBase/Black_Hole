@@ -3,8 +3,14 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <GLFW/glfw3.h> // or your windowing library
 #include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+
 class Shader
 {
+	public:
 	//basic constructor.
 	Shader(const std::string& vertexCode, const std::string& fragmentCode);
 	//bind shaders
@@ -21,6 +27,8 @@ class Shader
 	void SetVec4(const std::string& name, const glm::vec4& value) const;
 	void SetMat4(const std::string& name, const glm::mat4& mat) const;
 
+	//helper function.
+	static std::string LoadShaderFromFile(const std::string& filePath);
 
 	private:
 		GLuint shaderProgramID;

@@ -97,3 +97,19 @@ void Shader::SetMat4(const std::string& name, const glm::mat4& mat) const
 {
 	glUniformMatrix4fv(glGetUniformLocation(shaderProgramID, name.c_str()), 1, GL_FALSE, glm::value_ptr(mat));
 }
+
+std::string Shader::LoadShaderFromFile(const std::string& filePath)
+{
+	std::ifstream file(filePath);
+	if (!file.is_open())
+	{
+		std::cerr << "ERROR: Could not open shader file: " << filePath << std::endl;
+		return "";
+	}
+
+	std::stringstream ss;
+	ss << file.rdbuf(); // read entire file into stringstream
+	file.close();
+
+	return ss.str(); // convert stringstream to string
+}

@@ -8,7 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 file(GLOB SRC_FILES src/*.cpp)
 
 # Create executable
-add_executable(BlackHoleRayTracer ${SRC_FILES} "src/Mesh.cpp")
+add_executable(BlackHoleRayTracer ${SRC_FILES} 
+"src/Mesh.cpp"
+"src/Shader.cpp"
+)
 
 # Find packages via vcpkg
 find_package(glfw3 CONFIG REQUIRED) 

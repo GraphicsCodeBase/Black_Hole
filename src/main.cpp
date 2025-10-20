@@ -8,6 +8,14 @@
 std::string vertShader = "../../../Shaders/main.vert";
 std::string fragShader = "../../../Shaders/main.frag";
 
+//========================
+// NEXT STEPS FROM 20/10/2025
+// 
+// 1. DRAW TRAILILNGS LINES 
+// 2. IMPLEMENT FUNCIONS TO CURVE AROUND THE CIRCLE.
+// 
+//========================
+
 // Callback to adjust viewport on window resize
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {

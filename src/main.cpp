@@ -83,7 +83,10 @@ int main()
     //    4 * sizeof(float) // stride
     //);
 
-    auto circleVertices = Mesh::generateCircleVertices(0.5f, 64);
+    float screenWidth = 800.0f;
+    float screenHeight = 600.0f;
+    
+    auto circleVertices = Mesh::generateCircleVertices(1.0f, 64);
 
     Mesh circleMesh(
         circleVertices.data(),
@@ -92,15 +95,20 @@ int main()
         { {0, 3} },  // only one attribute: vec3 position
         3 * sizeof(float)
     );
-    circleMesh.setColor(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));//set to white for now.
+    circleMesh.setColor(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));//set to white for now.
 
     std::string vertCode = Shader::LoadShaderFromFile(vertShader);
     std::string fragCode = Shader::LoadShaderFromFile(fragShader);
     Shader mainShader(vertCode, fragCode);
-    float x = 0.7f;     // move 0.5 units to the right
-    float y = -0.3f;    // move 0.3 units down
-    float radius = 0.5f; // scale the circle (default is 1.0)
-   
+    //float x = 0.7f;     // move 0.5 units to the right
+    //float y = -0.3f;    // move 0.3 units down
+    //float radius = 0.5f; // scale the circle (default is 1.0)
+    glm::mat4 projection = glm::ortho(0.0f, screenWidth, 0.0f, screenHeight, -1.0f, 1.0f);
+    // After (using pixel coordinates):
+    float x = 700.0f;    // Center of the screen horizontally (400)
+    float y = 300.0f;   // Center of the screen vertically (300)
+    float radius = 50.0f;            // A 50 pixel radius
+
     // Main render loop
     while (!glfwWindowShouldClose(window))
     {
@@ -117,7 +125,7 @@ int main()
 
         mainShader.SetMat4("u_Model", model);
         mainShader.SetMat4("u_View", glm::mat4(1.0f));
-        mainShader.SetMat4("u_Projection", glm::mat4(1.0f));
+        mainShader.SetMat4("u_Projection", projection);
         mainShader.SetVec4("u_Color", circleMesh.getColor());
         circleMesh.draw_Circle();
         //triangle.draw();

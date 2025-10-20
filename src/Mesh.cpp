@@ -36,3 +36,43 @@ void Mesh::draw()
     glBindVertexArray(0);
 }
 
+void Mesh::draw_Circle()
+{
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, vertexCount);
+    glBindVertexArray(0);
+}
+
+std::vector<float> Mesh::generateCircleVertices(float radius, int segments)
+{
+    std::vector<float> vertices;
+
+    // Center of circle
+    vertices.push_back(0.0f);
+    vertices.push_back(0.0f);
+    vertices.push_back(0.0f);
+
+    // Points around the circle
+    for (int i = 0; i <= segments; ++i)
+    {
+        float angle = 2.0f * M_PI * i / segments;
+        float x = radius * cos(angle);
+        float y = radius * sin(angle);
+        vertices.push_back(x);
+        vertices.push_back(y);
+        vertices.push_back(0.0f);
+    }
+
+    return vertices;
+}
+
+void Mesh::setColor(glm::vec4 color_in)
+{
+    color = color_in;
+}
+
+glm::vec4 Mesh::getColor()
+{
+    return color;
+}
+

@@ -1,0 +1,416 @@
+# tactiq.io free youtube transcript
+# No title found
+# https://www.youtube.com/watch/8-B6ryuBkCM
+
+00:00:00.080 This is Sagittarius 8, the black hole in
+00:00:02.399 the center of the Milky Way, simulated
+00:00:04.080 in C++ using OpenGL. You've probably
+00:00:06.560 heard of black holes being crazy objects
+00:00:08.320 with gravity so strong that not even
+00:00:10.080 light can escape. But no matter how
+00:00:11.679 crazy you believe these objects are, you
+00:00:13.440 are wrong. And in this video, I hope to
+00:00:15.040 show you firsthand by using real physics
+00:00:16.800 equations to simulate the effects of
+00:00:18.400 black holes in space. So, let's start
+00:00:20.960 off with the plan. Simulating a black
+00:00:22.560 hole unsurprisingly has multiple parts
+00:00:24.480 to it. Firstly, black holes have the
+00:00:26.080 ability to curve light around them,
+00:00:27.599 creating these super cool effects that
+00:00:29.119 we'll be diving deep into later. To
+00:00:30.560 simulate this, I need to create a ray
+00:00:32.320 tracing engine. Similar to our own eyes,
+00:00:33.920 a ray tracing engine creates images
+00:00:35.600 using light rays. But instead of
+00:00:37.280 absorbing light like our eyes, it shoots
+00:00:39.040 out rays from the screen and calculates
+00:00:40.879 the path they take to their origin. For
+00:00:42.800 the black hole, we can use physics
+00:00:44.239 equations to alter the path of these
+00:00:46.079 rays based on the pull of the black
+00:00:47.600 hole. If this sounds confusing, no
+00:00:49.280 problem. Let's start with a 2D model. I
+00:00:51.039 begin by initializing OpenGL in an
+00:00:52.879 engine strct and running a window in the
+00:00:54.719 main loop.
+00:00:56.640 First, I'll create two strcts for the
+00:00:58.239 black hole and the light rays. A strruct
+00:00:59.920 is a simple way of creating your own
+00:01:01.280 data type that can store its own
+00:01:02.800 variables and functions. The black hole
+00:01:04.799 will have a position vector, a mass, and
+00:01:06.880 the event horizon. The event horizon is
+00:01:08.880 the distance at which not even light can
+00:01:10.320 escape a black hole. We can calculate it
+00:01:12.080 using the short sealed radius formula.
+00:01:13.680 And in our simulation, it will act as
+00:01:15.119 the radius. Keep this formula in mind
+00:01:16.799 though because it comes up again later.
+00:01:18.320 Now to draw the black hole, here's some
+00:01:19.600 déja vu. Because OpenGL doesn't have a
+00:01:21.600 default circle function, we have to
+00:01:23.200 create our own. So let's create a simple
+00:01:24.880 draw circle function in the black hole
+00:01:26.560 strct. By iterating over the radiance of
+00:01:28.320 the circle, we can get the sign and
+00:01:29.920 cosine values for each angle and
+00:01:31.680 multiply them by the radius to get a
+00:01:33.439 perfect circle. Then using the position
+00:01:35.040 values, we can offset the center to get
+00:01:36.960 full control over the black hole's
+00:01:38.320 position. Pretty simple. Now moving on
+00:01:40.880 to the racer. For now, we'll just add an
+00:01:42.880 X and Y component. In a simple draw
+00:01:44.880 function, we'll draw a point using their
+00:01:46.479 X and Y chords. Then we'll create a step
+00:01:48.640 function that takes the velocity of
+00:01:49.920 light 299792458
+00:01:51.680 m/s in a given direction and moves the
+00:01:53.840 light forward in small increments. Now
+00:01:55.520 let's initialize a ray in the main loop
+00:01:57.280 and run the simulation. This is nice,
+00:01:59.920 but I kind of want to see the path of
+00:02:01.280 the light as it moves forward. Let's add
+00:02:02.880 a trail vector to track the ray's
+00:02:04.320 previous positions. Each update will
+00:02:05.920 push the new X and Y coordinates to the
+00:02:07.680 trail and then blend it so that the
+00:02:08.878 trail is brightest at the tip and fades
+00:02:10.479 out near the end. Now in the main loop,
+00:02:11.840 we can initialize a cluster of rays in a
+00:02:13.680 line and run the simulation. Isn't that
+00:02:16.480 neat? But obviously if this was a real
+00:02:18.239 black hole, the light rays wouldn't be
+00:02:19.599 so chill going right through it. So now
+00:02:21.200 let's actually implement the physics to
+00:02:22.720 alter the path of the rays. Firstly,
+00:02:24.560 we'll be using polar coordinates instead
+00:02:26.480 of normal x and y. Polar coordinates are
+00:02:28.480 centered to the black hole. R is the
+00:02:30.239 distance of the black hole to the ray
+00:02:31.840 and pi is the angle from the x-axis.
+00:02:33.920 Here's a grid to help you visualize the
+00:02:35.440 two coordinates. Since our black hole is
+00:02:37.200 at 0 0, r can be calculated using the
+00:02:39.519 simple distance equation. But for all
+00:02:41.440 the pro programmers out there, we can
+00:02:43.120 use the hypotenuse function that does
+00:02:44.959 the same thing. Then pi can be
+00:02:46.319 calculated using the a tan function that
+00:02:48.080 takes in the x and y and outputs the
+00:02:49.760 angle. Step one complete. Pretty easy.
+00:02:51.680 Now quickly using our new polar
+00:02:53.200 coordinates, let's add an if statement
+00:02:54.640 to stop the rays from flying right
+00:02:56.080 through the black hole. If r is less
+00:02:57.840 than the sword shield radius, the point
+00:02:59.440 of no return, we can just skip stepping
+00:03:01.200 the ray. Let's test it out real quickly.
+00:03:02.959 And
+00:03:04.480 perfect. So far so good. Now we have to
+00:03:06.800 take a bit of a step back because
+00:03:08.159 there's some pretty intense math and
+00:03:09.680 physics that need to be explained. Okay,
+00:03:11.360 so you've probably heard that the
+00:03:12.480 universe is made of this thing called
+00:03:14.239 spacetime. and that big masses like
+00:03:15.840 stars or black holes can warp spaceime,
+00:03:18.159 something we call gravity. This
+00:03:19.680 curvature does something very
+00:03:21.120 interesting to the geometry of space.
+00:03:23.120 Think of a plane flying around Earth.
+00:03:24.720 Planes always take the shortest path to
+00:03:26.400 their destination. But on a flat map,
+00:03:28.239 this path looks curved. This is the
+00:03:29.840 definition of a geodessic, the shortest
+00:03:31.840 path in a curved space. So that weird
+00:03:33.840 curved flight path, it's actually the
+00:03:35.200 straightest possible path if you take
+00:03:36.720 into account Earth's curvature. The same
+00:03:38.480 goes for spacetime. All matter,
+00:03:40.080 including light, follows the geodessic
+00:03:42.239 path unless something is pushing on it.
+00:03:43.760 Right now, you're experiencing the
+00:03:45.200 ground pushing up on you, so you're not
+00:03:46.720 following the natural geodessic path
+00:03:48.480 towards Earth's center. This is
+00:03:49.599 intrinsically why you feel your own
+00:03:51.040 weight. Our goal now is to have our rays
+00:03:52.879 follow a geodessic, the shortest path
+00:03:54.720 through a curved space-time grid. This
+00:03:56.239 doesn't just mean apply gravity. It
+00:03:57.680 means calculate the shape of space-time
+00:03:59.360 itself. Because light is the fastest
+00:04:00.959 thing in our universe, it goes on a path
+00:04:02.640 that nothing else can go on because we
+00:04:04.480 experience the time dimension while
+00:04:05.920 light doesn't. So, we need to find the
+00:04:07.680 special path called the null gio. The
+00:04:09.680 tool physics gives us for this is the
+00:04:11.120 Einstein field equation. It's a law that
+00:04:12.879 connects mass and energy with the
+00:04:14.239 geometry of spacetime. But this doesn't
+00:04:15.920 give us a direct answer. To get actual
+00:04:17.680 paths, we need to solve it under
+00:04:19.279 specific conditions. Which, by the way,
+00:04:21.040 is like the hardest thing to do in all
+00:04:22.560 of physics. That's why in 1915, Carl
+00:04:25.199 Schwarzfield looked at this equation and
+00:04:26.639 thought, what if we took everything out
+00:04:28.080 of the universe and just left a still
+00:04:30.320 spherical mass? That would leave the
+00:04:32.000 entire right side of the equation to
+00:04:33.280 zero. Solving for this, he created the
+00:04:35.040 Schwarz shield metric that is even able
+00:04:36.800 to predict the curvature around a
+00:04:38.240 non-spinning black hole. And it's what
+00:04:39.840 we'll be using in our simulation. That's
+00:04:41.520 a lot of physics talk. So hopefully you
+00:04:43.199 have a clear idea of what we are trying
+00:04:44.960 to do here. Find the shortest path on a
+00:04:46.720 curved grid. So let's create a geodessic
+00:04:48.639 function outside of our strus that takes
+00:04:50.560 in the ray and the event horizon. In our
+00:04:52.720 ray truck, we'll add the dr and dpi
+00:04:54.960 parameters. These will act as our
+00:04:56.400 velocities for our polar positions. Now
+00:04:58.400 we need to figure out how fast those
+00:05:00.080 change. What is the acceleration of the
+00:05:02.000 direction of light? Key point, not
+00:05:03.759 speed, direction. The equation that will
+00:05:05.759 help us find the rate of change of the
+00:05:07.360 direction. Well, we have to calculate it
+00:05:09.520 ourselves from the geodessic equation.
+00:05:11.840 This is the geodessic equation. It helps
+00:05:13.600 us find the straightest possible path in
+00:05:15.280 a curved spaceime. We could literally
+00:05:16.800 use this equation to find the shortest
+00:05:18.400 path for a plane around the globe. This
+00:05:20.160 xu variable refers to any of the
+00:05:22.000 coordinates t, r or pi that we'll plug
+00:05:24.240 in one at a time to get our equation
+00:05:25.919 for. This value here is the aphen
+00:05:27.759 parameter. It's an arbitrary step size
+00:05:29.440 that we use to move forward in our
+00:05:30.720 simulation. Bringing it together, this
+00:05:32.160 entire part of the equation just means
+00:05:33.759 the acceleration of one of the
+00:05:35.039 coordinates r or pi. So let's start by
+00:05:36.960 filling in xu for our pi coordinate. The
+00:05:39.120 coordinate we're trying to find the
+00:05:40.160 acceleration for. Now here comes the
+00:05:41.840 tricky looking part. The crystal symbols
+00:05:43.919 written like an upside down L. These are
+00:05:45.440 what actually encode the curvature of
+00:05:46.960 spacetime caused by the black hole. The
+00:05:48.880 rest of the right hand side of the
+00:05:50.000 equation are just the velocity of
+00:05:51.360 components we already have dr and d pi.
+00:05:53.520 So to find the second derivative of pi
+00:05:55.360 or how the angular velocity changes, we
+00:05:57.440 use this specific crystal symbol.
+00:05:59.360 Simplifying it down we get 1 / r.
+00:06:01.840 Plugging this into the geodistic
+00:06:03.199 equation, we get the second derivative
+00:06:04.880 of pi is equal to 2 / r * dr r * d
+00:06:08.479 p. And it's the same line of steps
+00:06:10.000 for our r coordinate. We plug in the
+00:06:11.520 relevant crystal symbol and simplify.
+00:06:13.360 And we end up with the second derivative
+00:06:14.800 of r being c^² * the sorial radius / 2 r
+00:06:18.960 2 + r * d 2. These are the two
+00:06:22.080 final equations that give us our
+00:06:23.520 acceleration values for r and pi. So now
+00:06:25.759 we can just enter these equations into
+00:06:27.199 the geodessic function. More than having
+00:06:28.880 a complete understanding on how these
+00:06:30.479 calculations work and all, it's
+00:06:31.759 important that you understand the higher
+00:06:33.120 level of what they mean. This one is
+00:06:34.560 just finding out how fast our ray moves
+00:06:36.400 closer to the black hole. And this one
+00:06:37.840 is finding out how fast the angle
+00:06:39.440 changes relative to the black hole. And
+00:06:40.960 just understanding that these equations
+00:06:42.240 are calculating the shortest possible
+00:06:43.840 path on a curved space-time grid like
+00:06:45.680 the plane on the earth. That's all we
+00:06:47.280 really need to know. Now, in our step
+00:06:48.720 function, we can use our geodistic
+00:06:50.479 function to define the acceleration
+00:06:51.919 values for r and pi. These second
+00:06:53.840 derivative values will update our first
+00:06:55.440 derivatives dr and d pi which will
+00:06:57.360 directly update our r and pi position
+00:06:59.440 values. Then we can translate these back
+00:07:01.520 into normal cartisian coordinates and
+00:07:03.280 push them back in our trail. Now let's
+00:07:04.880 initialize the rays again and run the
+00:07:06.560 simulation.
+00:07:10.880 Isn't that neat? We can now clearly see
+00:07:12.880 the light being curved here by the black
+00:07:14.479 hole and even some rays spiraling in. I
+00:07:16.560 was even able to initialize a ray that
+00:07:18.240 completed three complete orbits before
+00:07:20.080 flying off.
+00:07:26.400 Hi there.
+00:07:27.840 But I'm noticing a few funny little
+00:07:29.440 errors here. This light ray took a giant
+00:07:31.280 step directly into the black hole. And
+00:07:33.039 the path of the lay seems a bit too
+00:07:34.560 straight for my liking. After some
+00:07:36.080 research, I found out that the problem
+00:07:37.599 stems from our step function. We're
+00:07:39.280 using something called the user's
+00:07:40.720 method, taking our acceleration and
+00:07:42.240 applying it to our velocities and
+00:07:43.840 position directly. But this is like
+00:07:45.360 driving high speed on a curved road in
+00:07:47.199 pitch dark. We're making sharp steps
+00:07:48.960 forward since we don't have context on
+00:07:50.639 what's coming next. The solution is
+00:07:52.400 something called Runga Cuda 4 or RK4.
+00:07:55.199 What RK4 does is it doesn't just take
+00:07:56.879 one step forward. It takes four steps
+00:07:58.639 forward all in one go. And then based on
+00:08:00.319 those four steps, it has a much more
+00:08:01.840 educated guess on what the accurate
+00:08:03.440 position of the light would be. So let's
+00:08:04.960 create an RK4 function underneath the
+00:08:06.720 geodessic function. Essentially, we'll
+00:08:08.240 be running the geodessic equation four
+00:08:10.080 times. And each time we'll be creating a
+00:08:11.599 new ray based on the new position. And
+00:08:13.360 at the end, we'll average out the four
+00:08:14.639 states using the special RK4 formula to
+00:08:16.800 get the most accurate path of the light.
+00:08:18.639 And that should be it.
+00:08:21.520 As you can see, we see much more
+00:08:22.879 realistic curves and no rigid steps
+00:08:24.960 compared to the old uler method. This is
+00:08:26.800 about as accurate as our 2D ray
+00:08:28.400 simulation can really get. Really
+00:08:30.080 quickly, I had the idea to add two black
+00:08:31.919 holes, meaning two entire polar
+00:08:33.519 coordinates. And here is what that
+00:08:35.039 looked like. Pretty neat.
+00:08:38.399 So with our 2D demonstration complete
+00:08:40.240 and hopefully your understanding of
+00:08:41.839 black holes expanded, let's move on to
+00:08:43.760 the 3D version. Other than adding a
+00:08:45.680 zcoordinate or a theta value to all our
+00:08:47.920 objects, there's a small problem with
+00:08:49.680 moving into 3D. You see, to run a 800 by
+00:08:52.320 600 pixel simulation, that's 480,000
+00:08:56.080 rays per frame. And each of those rays
+00:08:58.080 go through four different evaluations in
+00:09:00.000 Runga Cuda in tiny small steps. In
+00:09:02.320 experimentation, I found that in order
+00:09:03.760 to render the black hole in frame, our
+00:09:05.360 lights would have to complete at least
+00:09:06.800 10 to 20,000 steps forward. All that
+00:09:09.519 becomes a very heavy load on my core
+00:09:11.680 CPU. But we'll worry about performance
+00:09:13.440 later. Let's just get a working rate
+00:09:14.959 tracer going. I'll skip the boring
+00:09:16.160 parts, but essentially I set up a quad
+00:09:17.920 texture. A quad texture is like a
+00:09:19.519 picture that will display our screen
+00:09:20.800 based on a list of pixels that we give
+00:09:22.320 it. All we need now is a list of pixel,
+00:09:24.080 and our screen will be whatever pixel
+00:09:25.600 values are on that list. So, if we have
+00:09:27.519 the first half of the pixels set to red,
+00:09:29.760 our screen will be half red. Isn't that
+00:09:31.839 neat? Now, in the Y loop, we can run an
+00:09:33.760 800 by 600 array of rays. And if they do
+00:09:36.399 intercept the black hole, we can set
+00:09:37.839 their corresponding index values in the
+00:09:39.680 pixels list to red. But these rays need
+00:09:41.920 some initial values. So, let's create a
+00:09:43.839 camera with an orbital navigation system
+00:09:46.160 just like in Blender and shoot the rays
+00:09:47.839 out given in FOV. Then, in a for loop of
+00:09:50.320 20,000, we'll run the RK4 steps and
+00:09:52.560 update the rays. So, with our 800x 600x
+00:09:55.680 20,000x fourstep procedure complete,
+00:09:58.399 it's time to test whether my CPU can
+00:10:00.399 actually handle all that.
+00:10:03.440 Well, that one is expected. Like I
+00:10:05.200 mentioned, there's no way my CPU could
+00:10:06.959 reasonably do that many calculations
+00:10:08.720 with a good frame rate. In fact, I set
+00:10:10.320 up a clock to calculate my frame rate,
+00:10:12.160 and I got some pretty scary numbers. But
+00:10:14.320 I could see my simulation was definitely
+00:10:15.920 working. When I added a boolean value to
+00:10:17.600 disable curving the light, the
+00:10:18.959 simulation ran fine. However, the second
+00:10:20.480 I turned it on, it went ice cold. And
+00:10:22.959 that's where we had to switch from my
+00:10:24.320 CPU to my GPU. While CPUs are like
+00:10:27.120 Michelin star restaurants that can make
+00:10:28.880 multiple types of food with unique
+00:10:30.640 recipes. GPUs are like McDonald's.
+00:10:33.120 There's no fancy business at McDonald's.
+00:10:34.880 It's just fast reliable burgers over and
+00:10:37.200 over. And it's perfect for doing the
+00:10:38.959 repetitive calculations for our light
+00:10:40.800 rays in parallel. To run my simulation
+00:10:42.720 using my GPU, I create a new script in
+00:10:44.880 GPU language called geodessic.com. This
+00:10:47.440 script will run super fast and then
+00:10:49.040 return back all the values of the rays
+00:10:50.800 to my main script that's powered by my
+00:10:52.480 CPU. We're going to transfer the race,
+00:10:54.399 the geodessic and rk4 equations and then
+00:10:56.720 run a 20,000step loop in geodessic.com.
+00:10:59.360 If the ray intercepts a black hole, it's
+00:11:00.959 set to red and breaks. Otherwise, we run
+00:11:02.880 the rk4 function and update the
+00:11:04.640 position. And then once the loop is
+00:11:05.920 done, we'll return the final color.
+00:11:10.720 Okay, this is definitely better than
+00:11:12.399 what we had before, but I'm going to
+00:11:13.839 reduce my screen resolution from 800 by
+00:11:16.000 600 down to 400 by300 just to make it a
+00:11:18.800 little bit faster. This feels much
+00:11:20.320 better, and the simulation seems to be
+00:11:21.839 working well.
+00:11:23.680 But now is the moment we've all been
+00:11:25.279 waiting for. I want to see the halos
+00:11:26.959 around the black hole. I want to see how
+00:11:28.320 black holes warp objects around them.
+00:11:29.920 So, let's add an objects list to our
+00:11:31.360 simulation. In geodex.com, we're going
+00:11:33.120 to create a simple disc around the black
+00:11:34.880 hole along with an object checker to
+00:11:36.480 detect when the ray intersects with the
+00:11:38.160 objects. So, let's see the final
+00:11:40.000 product.
+00:11:41.300 [Music]
+00:11:50.560 While I show you guys more of these
+00:11:51.760 images, I just want to mention my
+00:11:53.120 dearest thank you to all of you that
+00:11:54.480 watched, liked, subscribed, and
+00:11:55.839 commented on my last video. If you
+00:11:57.200 haven't already, may I just allow your
+00:11:58.560 mouse to follow its naturalistic path
+00:12:00.640 towards that beautiful subscribe button.
+00:12:02.480 It would really mean a lot. To learn
+00:12:03.600 coding and create cool projects like
+00:12:05.120 this, I recommend signing up for
+00:12:06.399 codecfters.io io linked in my
+00:12:08.160 description. It's free and a perfect
+00:12:09.760 place to learn low-level skills like
+00:12:11.440 this. I truly appreciate you all. I
+00:12:13.519 reply to basically every comment on my
+00:12:15.120 videos, so you can contact me via the
+00:12:16.959 comment section below or you can follow
+00:12:18.399 me on Twitter and Instagram as well for
+00:12:20.320 DMs and updates on my project. And from
+00:12:22.560 the deepest point of my heart, I thank
+00:12:24.000 you very much for watching. Love you
+00:12:25.440 guys.
+00:12:27.120 Uh-huh.

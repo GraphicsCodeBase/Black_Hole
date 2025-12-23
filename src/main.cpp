@@ -6,8 +6,15 @@
 #include <Mesh.hpp>
 #include <Shader.hpp>
 #include <BlackHole.hpp>
+#include <Camera.hpp>
 std::string vertShader = "../../../Shaders/main.vert";
 std::string fragShader = "../../../Shaders/main.frag";
+
+// Camera and mouse tracking
+Camera camera(glm::vec3(400.0f, 300.0f, 0.0f), 300.0f);
+bool mousePressed = false;
+double lastX = 400.0, lastY = 300.0;
+bool firstMouse = true;
 
 //======================== 
 //========================

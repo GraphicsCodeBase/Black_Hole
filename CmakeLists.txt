@@ -11,7 +11,7 @@ file(GLOB SRC_FILES src/*.cpp)
 add_executable(BlackHoleRayTracer ${SRC_FILES} 
 "src/Mesh.cpp"
 "src/Shader.cpp"
- "src/BlackHole.cpp")
+ "src/BlackHole.cpp" "src/Camera.cpp")
 
 # Find packages via vcpkg
 find_package(glfw3 CONFIG REQUIRED) 

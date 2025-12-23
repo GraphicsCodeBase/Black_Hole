@@ -47,7 +47,7 @@ void renderTrail(const std::vector<glm::vec2>& trail, Shader& shader, const glm:
     shader.SetMat4("u_Projection", projection);
     shader.SetMat4("u_View", glm::mat4(1.0f));
     shader.SetMat4("u_Model", glm::mat4(1.0f));  // Identity matrix
-    shader.SetVec4("u_Color", glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));  // Yellow trail
+    shader.SetVec4("u_Color", glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));  // Yellow trail
 
     glBindVertexArray(VAO);
     glDrawArrays(GL_LINE_STRIP, 0, trail.size());
@@ -120,37 +120,52 @@ int main()
     //float radius = 0.5f; // scale the circle (default is 1.0)
     glm::mat4 projection = glm::ortho(0.0f, screenWidth, 0.0f, screenHeight, -1.0f, 1.0f);
     // After (using pixel coordinates):
-    float x = 700.0f;    // Center of the screen horizontally (400)
-    float y = 300.0f;   // Center of the screen vertically (300)
-    float radius = 50.0f;            // A 50 pixel radius
+    float x = 400.0f;
+    float y = 300.0f;
+    float radius = 40.0f;
 
-	// Create a black hole for testing.
-    // NEW (pixel-scale mass):
-    // We want Rs = 50 pixels (to match the visual circle)
-    // Rearranging: M = (Rs * C²) / (2 * G)
-    float desiredRs = 50.0f;  // pixels (matches circle radius)
+    float desiredRs = 40.0f;
     double mass = (desiredRs * C * C) / (2.0 * G);
     BlackHole blackHole(glm::vec2(x, y), mass);
-    std::cout << "=== BLACK HOLE INFO ===\n";
-    std::cout << "Position: (" << blackHole.position.x << ", " << blackHole.position.y << ")\n";
-    std::cout << "Schwarzschild Radius: " << blackHole.schwarzschildRadius << " pixels\n";
-    std::cout << "Mass: " << mass << " kg\n\n";
 
-    //vector to contain the light rays.
+    std::cout << "=== BLACK HOLE INFO ===\n";
+    std::cout << "Position: (" << x << ", " << y << ")\n";
+    std::cout << "Schwarzschild Radius: " << blackHole.schwarzschildRadius << " pixels\n";
+    std::cout << "Photon sphere: " << blackHole.schwarzschildRadius * 1.5f << " pixels\n\n";
+
     std::vector<LightRay> lightRays;
-    // Create 5 rays at different heights
-    for (int i = 0; i < 5; i++)
+
+    // === LIGHT SOURCE: Spray of rays from one point ===
+    glm::vec2 sourcePosition(100.0f, 300.0f);  // Single point on the left
+    int numRays = 30;  // Number of rays in the fan
+    float spreadAngle = 60.0f;  // Total spread in degrees (±30°)
+
+    for (int i = 0; i < numRays; i++)
     {
         LightRay ray;
-        float offsetY = y + (-100.0f + i * 50.0f);  // Different heights around black hole
 
-        // Start from left side, moving right
-        glm::vec2 startPos(50.0f, offsetY);
-        glm::vec2 startVel(100.0f, 0.0f);  // Moving right at 100 pixels/sec
+        // Calculate angle for this ray
+        float angleOffset = -spreadAngle / 2.0f + (spreadAngle / (numRays - 1)) * i;
+        float angleRadians = glm::radians(angleOffset);  // Convert to radians
 
-        ray.initialize(startPos, startVel, blackHole);
+        // Base velocity pointing right (toward black hole)
+        float speed = 70.0f;
+        float baseAngle = 0.0f;  // 0° = pointing right
+
+        // Rotate velocity by angleOffset
+        float finalAngle = baseAngle + angleRadians;
+        glm::vec2 velocity(
+            speed * std::cos(finalAngle),
+            speed * std::sin(finalAngle)
+        );
+
+        ray.initialize(sourcePosition, velocity, blackHole);
         lightRays.push_back(ray);
     }
+
+    std::cout << "Created " << numRays << " rays from ("
+        << sourcePosition.x << ", " << sourcePosition.y << ")\n";
+    std::cout << "Spread: ±" << spreadAngle / 2.0f << " degrees\n";
 
     // Main render loop
     while (!glfwWindowShouldClose(window))

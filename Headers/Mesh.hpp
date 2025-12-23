@@ -22,6 +22,7 @@ class Mesh
 
 	void setColor(glm::vec4 color_in);
 	glm::vec4 getColor();
+
 	private:
 		glm::vec4 color;
 };

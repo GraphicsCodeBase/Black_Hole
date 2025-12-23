@@ -5,21 +5,56 @@
 #include <iostream>
 #include <Mesh.hpp>
 #include <Shader.hpp>
+#include <BlackHole.hpp>
 std::string vertShader = "../../../Shaders/main.vert";
 std::string fragShader = "../../../Shaders/main.frag";
 
+//======================== 
 //========================
-// NEXT STEPS FROM 20/10/2025
-// 
-// 1. DRAW TRAILILNGS LINES 
-// 2. IMPLEMENT FUNCIONS TO CURVE AROUND THE CIRCLE.
-// 
-//========================
-
 // Callback to adjust viewport on window resize
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
+}
+
+void renderTrail(const std::vector<glm::vec2>& trail, Shader& shader, const glm::mat4& projection)
+{
+    if (trail.size() < 2) return;  // Need at least 2 points for a line
+
+    // Create vertices from trail points
+    std::vector<float> vertices;
+    for (const auto& point : trail)
+    {
+        vertices.push_back(point.x);
+        vertices.push_back(point.y);
+        vertices.push_back(0.0f);  // z = 0 (2D)
+    }
+
+    // Create VAO, VBO
+    unsigned int VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Set uniforms and draw
+    shader.Use();
+    shader.SetMat4("u_Projection", projection);
+    shader.SetMat4("u_View", glm::mat4(1.0f));
+    shader.SetMat4("u_Model", glm::mat4(1.0f));  // Identity matrix
+    shader.SetVec4("u_Color", glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));  // Yellow trail
+
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_LINE_STRIP, 0, trail.size());
+
+    // Cleanup
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
 }
 
 int main()
@@ -63,34 +98,6 @@ int main()
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    ////make a simple triangle in 2D 
-    //float vertices[] = {
-    //    // positions        // colors
-    //     0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f, // top (red)
-    //    -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, // left (green)
-    //     0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f  // right (blue)
-    //};
-    ////make a mesh
-    //Mesh triangle(vertices, sizeof(vertices));
-    //make shaders
-    //float quadVertices[] = {
-    //    // positions    // texCoords
-    //    -1.0f,  1.0f,  0.0f, 1.0f,
-    //    -1.0f, -1.0f,  0.0f, 0.0f,
-    //     1.0f, -1.0f,  1.0f, 0.0f,
-
-    //    -1.0f,  1.0f,  0.0f, 1.0f,
-    //     1.0f, -1.0f,  1.0f, 0.0f,
-    //     1.0f,  1.0f,  1.0f, 1.0f
-    //};
-    //Mesh quad(
-    //    quadVertices,
-    //    sizeof(quadVertices),
-    //    6, // 6 vertices
-    //    { {0,2},{1,2} }, // attributes: location 0=pos(2), location 1=UV(2)
-    //    4 * sizeof(float) // stride
-    //);
-
     float screenWidth = 800.0f;
     float screenHeight = 600.0f;
     
@@ -117,12 +124,79 @@ int main()
     float y = 300.0f;   // Center of the screen vertically (300)
     float radius = 50.0f;            // A 50 pixel radius
 
+	// Create a black hole for testing.
+    // NEW (pixel-scale mass):
+    // We want Rs = 50 pixels (to match the visual circle)
+    // Rearranging: M = (Rs * C²) / (2 * G)
+    float desiredRs = 50.0f;  // pixels (matches circle radius)
+    double mass = (desiredRs * C * C) / (2.0 * G);
+    BlackHole blackHole(glm::vec2(x, y), mass);
+    std::cout << "=== BLACK HOLE INFO ===\n";
+    std::cout << "Position: (" << blackHole.position.x << ", " << blackHole.position.y << ")\n";
+    std::cout << "Schwarzschild Radius: " << blackHole.schwarzschildRadius << " pixels\n";
+    std::cout << "Mass: " << mass << " kg\n\n";
+
+    //vector to contain the light rays.
+    std::vector<LightRay> lightRays;
+    // Create 5 rays at different heights
+    for (int i = 0; i < 5; i++)
+    {
+        LightRay ray;
+        float offsetY = y + (-100.0f + i * 50.0f);  // Different heights around black hole
+
+        // Start from left side, moving right
+        glm::vec2 startPos(50.0f, offsetY);
+        glm::vec2 startVel(100.0f, 0.0f);  // Moving right at 100 pixels/sec
+
+        ray.initialize(startPos, startVel, blackHole);
+        lightRays.push_back(ray);
+    }
+
     // Main render loop
     while (!glfwWindowShouldClose(window))
     {
         // Clear screen to pastel blue
         glClearColor(0.6f, 0.8f, 1.0f, 1.0f); // pastel blue RGBA
         glClear(GL_COLOR_BUFFER_BIT);
+
+        float deltaTime = 0.008f;  // ~60 FPS
+        static int debugCounter = 0;
+        debugCounter++;
+        for (int i = 0; i < lightRays.size(); i++)
+        {
+            auto& ray = lightRays[i];
+
+            // DEBUG: Print before step
+            if (debugCounter == 1 && i == 0)  // First frame, first ray
+            {
+                std::cout << "BEFORE step - Ray 0:\n";
+                std::cout << "  Position: (" << ray.position.x << ", " << ray.position.y << ")\n";
+                std::cout << "  r=" << ray.r << ", theta=" << ray.theta << "\n";
+                std::cout << "  dr_dlambda=" << ray.dr_dlambda << ", dtheta_dlambda=" << ray.dtheta_dlambda << "\n";
+                std::cout << "  active=" << ray.active << "\n";
+            }
+
+            if (ray.active)
+            {
+                ray.step(deltaTime, blackHole);
+            }
+
+            // DEBUG: Print after step
+            if (debugCounter == 1 && i == 0)  // First frame, first ray
+            {
+                std::cout << "\nAFTER step - Ray 0:\n";
+                std::cout << "  Position: (" << ray.position.x << ", " << ray.position.y << ")\n";
+                std::cout << "  r=" << ray.r << ", theta=" << ray.theta << "\n";
+                std::cout << "  Trail size: " << ray.trail.size() << "\n\n";
+            }
+
+            // Print every 60 frames
+            /*if (debugCounter % 60 == 0 && i == 0)
+            {
+                std::cout << "Frame " << debugCounter << " - Ray 0 position: ("
+                    << ray.position.x << ", " << ray.position.y << ")\n";
+            }*/
+        }
 
         //bind shader
         mainShader.Use();
@@ -136,6 +210,16 @@ int main()
         mainShader.SetMat4("u_Projection", projection);
         mainShader.SetVec4("u_Color", circleMesh.getColor());
         circleMesh.draw_Circle();
+
+        // RENDER ALL LIGHT RAY TRAILS
+        for (const auto& ray : lightRays)
+        {
+            if (ray.trail.size() > 1)  // Only render if there's a trail
+            {
+                renderTrail(ray.trail, mainShader, projection);
+            }
+        }
+
         //triangle.draw();
         //quad.draw();
 

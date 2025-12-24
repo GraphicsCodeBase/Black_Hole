@@ -112,20 +112,20 @@ int main()
     float screenWidth = 800.0f;
     float screenHeight = 600.0f;
     
-    auto circleVertices = Mesh::generateCircleVertices(1.0f, 64);
+    //auto circleVertices = Mesh::generateCircleVertices(1.0f, 64);
 
-    Mesh circleMesh(
-        circleVertices.data(),
-        circleVertices.size() * sizeof(float),
-        static_cast<GLsizei>(circleVertices.size() / 3),
-        { {0, 3} },  // only one attribute: vec3 position
-        3 * sizeof(float)
-    );
-    circleMesh.setColor(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));//set to red for now.
+    //Mesh circleMesh(
+    //    circleVertices.data(),
+    //    circleVertices.size() * sizeof(float),
+    //    static_cast<GLsizei>(circleVertices.size() / 3),
+    //    { {0, 3} },  // only one attribute: vec3 position
+    //    3 * sizeof(float)
+    //);
+    //circleMesh.setColor(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));//set to red for now.
 
-    std::string vertCode = Shader::LoadShaderFromFile(vertShader);
-    std::string fragCode = Shader::LoadShaderFromFile(fragShader);
-    Shader mainShader(vertCode, fragCode);
+    //std::string vertCode = Shader::LoadShaderFromFile(vertShader);
+    //std::string fragCode = Shader::LoadShaderFromFile(fragShader);
+    //Shader mainShader(vertCode, fragCode);
 
 	std::string quadVertCode = Shader::LoadShaderFromFile(QuadvertShader);
 	std::string quadFragCode = Shader::LoadShaderFromFile(QuadfragShader);
@@ -200,6 +200,13 @@ int main()
 
 		//bind compute shader
         computeShader.Use();
+
+        // Set uniforms for compute shader
+        computeShader.SetVec2("u_blackHolePos", glm::vec2(x, y));
+        computeShader.SetFloat("u_mass", static_cast<float>(mass));
+        computeShader.SetFloat("u_Rs", static_cast<float>(blackHole.schwarzschildRadius));
+        computeShader.SetVec2("u_screenSize", glm::vec2(screenWidth, screenHeight));
+
         glBindImageTexture(0, graphics.getTexture(),0,GL_FALSE,0, GL_WRITE_ONLY, GL_RGBA8);
 
 		int workGroupsX, workGroupsY;
@@ -243,18 +250,18 @@ int main()
         //    }
         //}
 
-        //bind shader
-        mainShader.Use();
-        // Build your transformation matrix (translate, rotate, scale)
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(x, y, 0.0f));
-        model = glm::scale(model, glm::vec3(radius, radius, 1.0f));
+        ////bind shader
+        //mainShader.Use();
+        //// Build your transformation matrix (translate, rotate, scale)
+        //glm::mat4 model = glm::mat4(1.0f);
+        //model = glm::translate(model, glm::vec3(x, y, 0.0f));
+        //model = glm::scale(model, glm::vec3(radius, radius, 1.0f));
 
-        mainShader.SetMat4("u_Model", model);
-        mainShader.SetMat4("u_View", glm::mat4(1.0f));
-        mainShader.SetMat4("u_Projection", projection);
-        mainShader.SetVec4("u_Color", circleMesh.getColor());
-        circleMesh.draw_Circle();
+        //mainShader.SetMat4("u_Model", model);
+        //mainShader.SetMat4("u_View", glm::mat4(1.0f));
+        //mainShader.SetMat4("u_Projection", projection);
+        //mainShader.SetVec4("u_Color", circleMesh.getColor());
+        //circleMesh.draw_Circle();
 
         //// RENDER ALL LIGHT RAY TRAILS
         //for (const auto& ray : lightRays)

@@ -6,6 +6,120 @@ layout(local_size_x = 16, local_size_y = 16) in;
 // Output texture (write-only)
 layout(rgba8, binding = 0) uniform writeonly image2D outputTexture;
 
+//physics constants
+const float G = 1.0f;
+const float C = 100.0f;
+
+//black hole params
+uniform vec2 u_blackHolePos;
+uniform float u_mass;
+uniform float u_Rs;
+
+//screen params
+uniform vec2 u_screenSize;
+
+//ray state
+struct RayState{
+      float r;              // Distance from black hole
+      float theta;          // Angle (radians)
+      float dr_dlambda;     // Radial velocity
+      float dtheta_dlambda; // Angular velocity
+};
+// Add two ray states
+ RayState addStates(RayState a, RayState b) {
+     RayState result;
+     result.r = a.r + b.r;
+     result.theta = a.theta + b.theta;
+     result.dr_dlambda = a.dr_dlambda + b.dr_dlambda;
+     result.dtheta_dlambda = a.dtheta_dlambda + b.dtheta_dlambda;
+     return result;
+ }
+
+ // Multiply ray state by scalar
+ RayState multiplyState(RayState state, float scalar) {
+     RayState result;
+     result.r = state.r * scalar;
+     result.theta = state.theta * scalar;
+     result.dr_dlambda = state.dr_dlambda * scalar;
+     result.dtheta_dlambda = state.dtheta_dlambda * scalar;
+     return result;
+ }
+
+ //converting from cartesian to polar coordinates
+ vec2 cartesianToPolar(vec2 pos, vec2 blackHolePos)
+ {
+    float dx = pos.x - blackHolePos.x;
+    float dy = pos.y - blackHolePos.y;
+
+    //calculate r using pythagorean theorem
+    float r = sqrt(dx * dx + dy * dy);
+
+    float theta = atan(dy, dx); //angle in radians
+    return vec2(r, theta);
+ }
+
+  // Convert Polar (r, theta) to Cartesian (x, y)
+  vec2 polarToCartesian(float r, float theta, vec2 blackHolePos) {
+      // Convert polar to Cartesian offset using trig
+      float x = r * cos(theta);
+      float y = r * sin(theta);
+
+      // Add black hole position to get world coordinates
+      return vec2(blackHolePos.x + x, blackHolePos.y + y);
+  }
+
+  // Calculate derivatives (geodesic equations)
+  // Returns a RayState with derivatives: (dr/dlambda, dtheta/dlambda, d2r/dlambda2, d2theta/dlambda2)
+  RayState calculateDerivatives(RayState state) {
+      // Extract current state
+      float r = state.r;
+      float dr = state.dr_dlambda;
+      float dtheta = state.dtheta_dlambda;
+
+      // Calculate accelerations using geodesic equations
+
+      // Angular acceleration: d2theta/dlambda2 = -(2/r) * (dr/dlambda) * (dtheta/dlambda)
+      float d2theta_dlambda2 = -(2.0 / r) * dr * dtheta;
+
+      // Radial acceleration: d2r/dlambda2 = -(c^2 * Rs)/(2*r^2) + r*(dtheta/dlambda)^2
+      float d2r_dlambda2 = -(C * C * u_Rs) / (2.0 * r * r) + r * dtheta * dtheta;
+
+      // Return derivatives (velocities and accelerations)
+      RayState derivatives;
+      derivatives.r = dr;                      // dr/dlambda
+      derivatives.theta = dtheta;              // dtheta/dlambda
+      derivatives.dr_dlambda = d2r_dlambda2;   // d2r/dlambda2
+      derivatives.dtheta_dlambda = d2theta_dlambda2;  // d2theta/dlambda2
+      return derivatives;
+  }
+
+  // Perform one RK4 integration step
+  // Takes current state and time step, returns new state
+  RayState rk4Step(RayState initial, float deltaTime) {
+      // k1: Evaluate at current position
+      RayState k1 = calculateDerivatives(initial);
+
+      // k2: Evaluate at midpoint using k1
+      RayState state2 = addStates(initial, multiplyState(k1, deltaTime / 2.0));
+      RayState k2 = calculateDerivatives(state2);
+
+      // k3: Evaluate at midpoint using k2
+      RayState state3 = addStates(initial, multiplyState(k2, deltaTime / 2.0));
+      RayState k3 = calculateDerivatives(state3);
+
+      // k4: Evaluate at endpoint using k3
+      RayState state4 = addStates(initial, multiplyState(k3, deltaTime));
+      RayState k4 = calculateDerivatives(state4);
+
+      // Combine with RK4 weights: initial + (k1 + 2*k2 + 2*k3 + k4) * dt/6
+      RayState k2_weighted = multiplyState(k2, 2.0);
+      RayState k3_weighted = multiplyState(k3, 2.0);
+      RayState sum = addStates(k1, addStates(k2_weighted, addStates(k3_weighted, k4)));
+      RayState increment = multiplyState(sum, deltaTime / 6.0);
+
+      return addStates(initial, increment);
+  }
+
 void main() {
     // Get pixel coordinates
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -15,9 +129,44 @@ void main() {
     if (pixelCoord.x >= size.x || pixelCoord.y >= size.y)
         return;
 
-    // Test: Output solid red color to verify compute shader is working
-    vec4 color = vec4(1.0, 0.0, 0.0, 1.0);  // Red
+    //convert pixel into world position.
+    vec2 pixelPos = vec2(float(pixelCoord.x),float(pixelCoord.y));
 
-    // Write to output texture
-    imageStore(outputTexture, pixelCoord, color);
+    //initalise ray in polar coordinates
+    vec2 polar = cartesianToPolar(pixelPos, u_blackHolePos);
+
+    RayState ray;
+    ray.r = polar.x;          // Distance from black hole
+    ray.theta = polar.y;      //Angle (radians)
+    ray.dr_dlambda = 0.0;     // Initially no radial velocity
+    ray.dtheta_dlambda = 0.0; // Initially no angular velocity
+
+    // Ray tracing parameters
+      float deltaTime = 0.1;        // Integration time step
+      int maxSteps = 100;           // Maximum integration steps
+      float maxDistance = 1000.0;   // Escape distance
+
+
+      // Trace the ray
+      vec4 color = vec4(0.6, 0.8, 1.0, 1.0);  // Default: pastel blue background
+
+      for (int step = 0; step < maxSteps; step++) {
+          // Check if ray hit event horizon
+          if (ray.r < u_Rs) {
+              color = vec4(0.0, 0.0, 0.0, 1.0);  // BLACK
+              break;
+          }
+
+          // Check if ray escaped to infinity
+          if (ray.r > maxDistance) {
+              // Keep background color
+              break;
+          }
+
+          // Integrate one step forward
+          ray = rk4Step(ray, deltaTime);
+      }
+
+      // Write final color to texture
+      imageStore(outputTexture, pixelCoord, color);
 }

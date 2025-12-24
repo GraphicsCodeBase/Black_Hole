@@ -132,14 +132,26 @@ void main() {
     //convert pixel into world position.
     vec2 pixelPos = vec2(float(pixelCoord.x),float(pixelCoord.y));
 
-    //initalise ray in polar coordinates
-    vec2 polar = cartesianToPolar(pixelPos, u_blackHolePos);
+ // Initialize ray in polar coordinates
+  vec2 polar = cartesianToPolar(pixelPos, u_blackHolePos);
 
-    RayState ray;
-    ray.r = polar.x;          // Distance from black hole
-    ray.theta = polar.y;      //Angle (radians)
-    ray.dr_dlambda = 0.0;     // Initially no radial velocity
-    ray.dtheta_dlambda = 0.0; // Initially no angular velocity
+  RayState ray;
+  ray.r = polar.x;          // Distance from black hole
+  ray.theta = polar.y;      // Angle (radians)
+
+  // Give ray an initial velocity (simulating light traveling toward/past the black hole)
+  // For now, let's simulate rays coming from the left side of the screen
+  // Velocity should point to the right (positive x direction)
+  vec2 radialDir = normalize(pixelPos - u_blackHolePos);  // Direction away from BH
+  vec2 tangentialDir = vec2(-radialDir.y, radialDir.x);   // Perpendicular direction
+
+  // Initial velocity: mostly tangential (sideways past black hole), like light passing by
+  float speed = C;  // Speed of light
+  vec2 velocity = tangentialDir * speed;  // Moving perpendicular to radial direction
+
+  // Convert velocity to polar components
+  ray.dr_dlambda = 0.0;  // No radial motion initially (moving tangentially)
+  ray.dtheta_dlambda = speed / ray.r;  // Angular velocity = v / r
 
     // Ray tracing parameters
       float deltaTime = 0.1;        // Integration time step

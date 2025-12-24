@@ -7,8 +7,12 @@
 #include <Shader.hpp>
 #include <BlackHole.hpp>
 #include <Camera.hpp>
+#include <Graphics.hpp>
 std::string vertShader = "../../../Shaders/main.vert";
 std::string fragShader = "../../../Shaders/main.frag";
+std::string QuadfragShader = "../../../Shaders/quad.frag";
+std::string QuadvertShader = "../../../Shaders/quad.vert";
+std::string CompShader = "../../../Shaders/geodesic.comp";
 
 // Camera and mouse tracking
 Camera camera(glm::vec3(400.0f, 300.0f, 0.0f), 300.0f);
@@ -74,7 +78,7 @@ int main()
     }
 
     // Set GLFW to use OpenGL 3.3 Core Profile
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
@@ -117,11 +121,24 @@ int main()
         { {0, 3} },  // only one attribute: vec3 position
         3 * sizeof(float)
     );
-    circleMesh.setColor(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));//set to white for now.
+    circleMesh.setColor(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));//set to red for now.
 
     std::string vertCode = Shader::LoadShaderFromFile(vertShader);
     std::string fragCode = Shader::LoadShaderFromFile(fragShader);
     Shader mainShader(vertCode, fragCode);
+
+	std::string quadVertCode = Shader::LoadShaderFromFile(QuadvertShader);
+	std::string quadFragCode = Shader::LoadShaderFromFile(QuadfragShader);
+	Shader quadShader(quadVertCode, quadFragCode);
+
+    //convert the comp shader into a string 
+	std::string computeCode = Shader::LoadShaderFromFile(CompShader);
+	Shader computeShader(computeCode, true);
+
+    //generate a quad to will up the window.
+	Graphics graphics(static_cast<int>(screenWidth), static_cast<int>(screenHeight));
+    graphics.bindForCompute();//making sure that the current computer shader is active.
+
     //float x = 0.7f;     // move 0.5 units to the right
     //float y = -0.3f;    // move 0.3 units down
     //float radius = 0.5f; // scale the circle (default is 1.0)
@@ -140,39 +157,39 @@ int main()
     std::cout << "Schwarzschild Radius: " << blackHole.schwarzschildRadius << " pixels\n";
     std::cout << "Photon sphere: " << blackHole.schwarzschildRadius * 1.5f << " pixels\n\n";
 
-    std::vector<LightRay> lightRays;
+    //std::vector<LightRay> lightRays;
 
-    // === LIGHT SOURCE: Spray of rays from one point ===
-    glm::vec2 sourcePosition(100.0f, 300.0f);  // Single point on the left
-    int numRays = 30;  // Number of rays in the fan
-    float spreadAngle = 60.0f;  // Total spread in degrees (±30°)
+    //// === LIGHT SOURCE: Spray of rays from one point ===
+    //glm::vec2 sourcePosition(100.0f, 300.0f);  // Single point on the left
+    //int numRays = 30;  // Number of rays in the fan
+    //float spreadAngle = 60.0f;  // Total spread in degrees (±30°)
 
-    for (int i = 0; i < numRays; i++)
-    {
-        LightRay ray;
+    //for (int i = 0; i < numRays; i++)
+    //{
+    //    LightRay ray;
 
-        // Calculate angle for this ray
-        float angleOffset = -spreadAngle / 2.0f + (spreadAngle / (numRays - 1)) * i;
-        float angleRadians = glm::radians(angleOffset);  // Convert to radians
+    //    // Calculate angle for this ray
+    //    float angleOffset = -spreadAngle / 2.0f + (spreadAngle / (numRays - 1)) * i;
+    //    float angleRadians = glm::radians(angleOffset);  // Convert to radians
 
-        // Base velocity pointing right (toward black hole)
-        float speed = 70.0f;
-        float baseAngle = 0.0f;  // 0° = pointing right
+    //    // Base velocity pointing right (toward black hole)
+    //    float speed = 70.0f;
+    //    float baseAngle = 0.0f;  // 0° = pointing right
 
-        // Rotate velocity by angleOffset
-        float finalAngle = baseAngle + angleRadians;
-        glm::vec2 velocity(
-            speed * std::cos(finalAngle),
-            speed * std::sin(finalAngle)
-        );
+    //    // Rotate velocity by angleOffset
+    //    float finalAngle = baseAngle + angleRadians;
+    //    glm::vec2 velocity(
+    //        speed * std::cos(finalAngle),
+    //        speed * std::sin(finalAngle)
+    //    );
 
-        ray.initialize(sourcePosition, velocity, blackHole);
-        lightRays.push_back(ray);
-    }
+    //    ray.initialize(sourcePosition, velocity, blackHole);
+    //    lightRays.push_back(ray);
+    //}
 
-    std::cout << "Created " << numRays << " rays from ("
-        << sourcePosition.x << ", " << sourcePosition.y << ")\n";
-    std::cout << "Spread: ±" << spreadAngle / 2.0f << " degrees\n";
+    //std::cout << "Created " << numRays << " rays from ("
+    //    << sourcePosition.x << ", " << sourcePosition.y << ")\n";
+    //std::cout << "Spread: ±" << spreadAngle / 2.0f << " degrees\n";
 
     // Main render loop
     while (!glfwWindowShouldClose(window))
@@ -181,44 +198,50 @@ int main()
         glClearColor(0.6f, 0.8f, 1.0f, 1.0f); // pastel blue RGBA
         glClear(GL_COLOR_BUFFER_BIT);
 
+		//bind compute shader
+        computeShader.Use();
+        glBindImageTexture(0, graphics.getTexture(),0,GL_FALSE,0, GL_WRITE_ONLY, GL_RGBA8);
+
+		int workGroupsX, workGroupsY;
+        graphics.getWorkGroups(workGroupsX, workGroupsY);
+		//this will dispatch the compute shader with enough work groups to cover the whole texture.
+        glDispatchCompute(workGroupsX, workGroupsY, 1);
+		//this will tell opengl to wait until the compute shader is done writing to the texture.
+		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+        graphics.renderQuad(quadShader);
+
         float deltaTime = 0.008f;  // ~60 FPS
         static int debugCounter = 0;
         debugCounter++;
-        for (int i = 0; i < lightRays.size(); i++)
-        {
-            auto& ray = lightRays[i];
+        //for (int i = 0; i < lightRays.size(); i++)
+        //{
+        //    auto& ray = lightRays[i];
 
-            // DEBUG: Print before step
-            if (debugCounter == 1 && i == 0)  // First frame, first ray
-            {
-                std::cout << "BEFORE step - Ray 0:\n";
-                std::cout << "  Position: (" << ray.position.x << ", " << ray.position.y << ")\n";
-                std::cout << "  r=" << ray.r << ", theta=" << ray.theta << "\n";
-                std::cout << "  dr_dlambda=" << ray.dr_dlambda << ", dtheta_dlambda=" << ray.dtheta_dlambda << "\n";
-                std::cout << "  active=" << ray.active << "\n";
-            }
+        //    // DEBUG: Print before step
+        //    if (debugCounter == 1 && i == 0)  // First frame, first ray
+        //    {
+        //        std::cout << "BEFORE step - Ray 0:\n";
+        //        std::cout << "  Position: (" << ray.position.x << ", " << ray.position.y << ")\n";
+        //        std::cout << "  r=" << ray.r << ", theta=" << ray.theta << "\n";
+        //        std::cout << "  dr_dlambda=" << ray.dr_dlambda << ", dtheta_dlambda=" << ray.dtheta_dlambda << "\n";
+        //        std::cout << "  active=" << ray.active << "\n";
+        //    }
 
-            if (ray.active)
-            {
-                ray.step(deltaTime, blackHole);
-            }
+        //    if (ray.active)
+        //    {
+        //        ray.step(deltaTime, blackHole);
+        //    }
 
-            // DEBUG: Print after step
-            if (debugCounter == 1 && i == 0)  // First frame, first ray
-            {
-                std::cout << "\nAFTER step - Ray 0:\n";
-                std::cout << "  Position: (" << ray.position.x << ", " << ray.position.y << ")\n";
-                std::cout << "  r=" << ray.r << ", theta=" << ray.theta << "\n";
-                std::cout << "  Trail size: " << ray.trail.size() << "\n\n";
-            }
-
-            // Print every 60 frames
-            /*if (debugCounter % 60 == 0 && i == 0)
-            {
-                std::cout << "Frame " << debugCounter << " - Ray 0 position: ("
-                    << ray.position.x << ", " << ray.position.y << ")\n";
-            }*/
-        }
+        //    // DEBUG: Print after step
+        //    if (debugCounter == 1 && i == 0)  // First frame, first ray
+        //    {
+        //        std::cout << "\nAFTER step - Ray 0:\n";
+        //        std::cout << "  Position: (" << ray.position.x << ", " << ray.position.y << ")\n";
+        //        std::cout << "  r=" << ray.r << ", theta=" << ray.theta << "\n";
+        //        std::cout << "  Trail size: " << ray.trail.size() << "\n\n";
+        //    }
+        //}
 
         //bind shader
         mainShader.Use();
@@ -233,14 +256,14 @@ int main()
         mainShader.SetVec4("u_Color", circleMesh.getColor());
         circleMesh.draw_Circle();
 
-        // RENDER ALL LIGHT RAY TRAILS
-        for (const auto& ray : lightRays)
-        {
-            if (ray.trail.size() > 1)  // Only render if there's a trail
-            {
-                renderTrail(ray.trail, mainShader, projection);
-            }
-        }
+        //// RENDER ALL LIGHT RAY TRAILS
+        //for (const auto& ray : lightRays)
+        //{
+        //    if (ray.trail.size() > 1)  // Only render if there's a trail
+        //    {
+        //        renderTrail(ray.trail, mainShader, projection);
+        //    }
+        //}
 
         //triangle.draw();
         //quad.draw();

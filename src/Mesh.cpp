@@ -66,6 +66,25 @@ std::vector<float> Mesh::generateCircleVertices(float radius, int segments)
     return vertices;
 }
 
+std::vector<float> Mesh::generateQuadVertices()
+{
+    // Fullscreen quad with position (x,y) and texcoord (u,v)
+       // Format: x, y, u, v for each vertex
+    std::vector<float> vertices = {
+        // First triangle
+        -1.0f,  1.0f,  0.0f, 1.0f,  // Top-left
+        -1.0f, -1.0f,  0.0f, 0.0f,  // Bottom-left
+         1.0f, -1.0f,  1.0f, 0.0f,  // Bottom-right
+
+         // Second triangle
+         -1.0f,  1.0f,  0.0f, 1.0f,  // Top-left
+          1.0f, -1.0f,  1.0f, 0.0f,  // Bottom-right
+          1.0f,  1.0f,  1.0f, 1.0f   // Top-right
+    };
+
+    return vertices;
+}
+
 void Mesh::setColor(glm::vec4 color_in)
 {
     color = color_in;

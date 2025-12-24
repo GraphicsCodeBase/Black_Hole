@@ -1,3 +1,4 @@
+#pragma once
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -6,13 +7,16 @@
 #include <string>
 #include <fstream>
 #include <sstream>
-#include <iostream>
 
 class Shader
 {
 	public:
 	//basic constructor.
 	Shader(const std::string& vertexCode, const std::string& fragmentCode);
+
+	//constructor for computeshader
+	Shader(const std::string& computeCode, bool isCompute);
+
 	//bind shaders
 	void Use() const;
 	GLuint GetID() const { return shaderProgramID; }

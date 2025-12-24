@@ -1,0 +1,23 @@
+#version 430
+
+// Work group size: 16x16 threads
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// Output texture (write-only)
+layout(rgba8, binding = 0) uniform writeonly image2D outputTexture;
+
+void main() {
+    // Get pixel coordinates
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(outputTexture);
+
+    // Bounds check
+    if (pixelCoord.x >= size.x || pixelCoord.y >= size.y)
+        return;
+
+    // Test: Output solid red color to verify compute shader is working
+    vec4 color = vec4(1.0, 0.0, 0.0, 1.0);  // Red
+
+    // Write to output texture
+    imageStore(outputTexture, pixelCoord, color);
+}

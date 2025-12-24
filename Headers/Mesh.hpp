@@ -1,3 +1,4 @@
+#pragma once
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -19,6 +20,8 @@ class Mesh
 	void draw_Circle();
 
 	static std::vector<float> generateCircleVertices(float radius, int segments);
+
+	static std::vector<float> generateQuadVertices();
 
 	void setColor(glm::vec4 color_in);
 	glm::vec4 getColor();

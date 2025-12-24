@@ -54,6 +54,44 @@ Shader::Shader(const std::string& vertexCode, const std::string& fragmentCode)
 	glDeleteShader(fragmentShader);
 }
 
+Shader::Shader(const std::string& computeCode, bool isCompute)
+{
+	if(!isCompute)
+	{
+		std::cerr << "ERROR: Use the other constructor for non-compute shaders." << std::endl;
+		return;
+	}
+	const char* compShaderCode = computeCode.c_str();
+	//error handling variables
+	int success{};
+	char infoLog[1024]{};
+
+	// compute Shader
+	GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+	// Specify source code for shader before compiling it
+	glShaderSource(computeShader, 1, &compShaderCode, nullptr);
+	glCompileShader(computeShader);
+
+	glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		glGetShaderInfoLog(computeShader, 1024, nullptr, infoLog);
+		std::cerr << "Failed to compile compute Shader!" << std::endl;
+		std::cerr << "InfoLog: " << infoLog << std::endl;
+	}
+	shaderProgramID = glCreateProgram();
+	glAttachShader(shaderProgramID, computeShader);
+	glLinkProgram(shaderProgramID);
+
+	glGetProgramiv(shaderProgramID, GL_LINK_STATUS, &success);
+	if (!success) {
+		glGetProgramInfoLog(shaderProgramID, 1024, nullptr, infoLog);
+		std::cerr << "Failed to link shaders!" << std::endl;
+		std::cerr << "InfoLog: " << infoLog << std::endl;
+	}
+
+	glDeleteShader(computeShader);
+}
+
 void Shader::Use() const
 {
 	glUseProgram(shaderProgramID);

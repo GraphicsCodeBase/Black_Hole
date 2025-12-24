@@ -3,7 +3,9 @@
     "allow": [
       "Bash(find:*)",
       "Bash(dir:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(findstr:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

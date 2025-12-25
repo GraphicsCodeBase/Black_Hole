@@ -18,6 +18,10 @@ uniform float u_Rs;
 //screen params
 uniform vec2 u_screenSize;
 
+//basic const expressions
+const float diskInnerMultiplier = 2.0;
+const float diskOuterMultiplier = 8.0;
+
 //ray state
 struct RayState{
       float r;              // Distance from black hole
@@ -118,6 +122,47 @@ struct RayState{
       RayState increment = multiplyState(sum, deltaTime / 6.0);
 
       return addStates(initial, increment);
+  }
+
+  bool hitDisk(vec2 position)
+  {
+        //get the distance from the black hole and the position
+        vec2 toBH = position - u_blackHolePos;
+
+        //check if distance if within bound 
+        float dist = length(toBH);
+        if(dist > u_Rs * diskInnerMultiplier && dist < u_Rs * diskOuterMultiplier)
+        {
+            return true;
+        }else 
+        {
+          return false;
+        }
+  }
+ //| Distance r          | t value | Color Result     |
+ //|---------------------|---------|------------------|
+ //| 80 pixels (inner)   | 0.0     |  Bright yellow   |
+ //| 120 pixels          | 0.17    |  Yellow-orange   |
+ //| 200 pixels (middle) | 0.5     |  Orange          |
+ //| 280 pixels          | 0.83    |  Red-orange      |
+ //| 320 pixels (outer)  | 1.0     |  Deep red        |
+
+  vec3 getDiskColor(float r)
+  {
+      //functions takes in the distance from the black hole and returns a color
+      //if the distance is nearer to the black hole the color would be yellow , 
+      //further to the black hole it would be orange/red
+
+      float innerRadius = diskInnerMultiplier * u_Rs;
+      float outerRadius = diskOuterMultiplier * u_Rs;
+      //normalise the distance 
+      float t = (r - innerRadius) / (outerRadius - innerRadius);
+
+      //define the two colors.
+      vec3 innerColor = vec3(1.0, 1.0, 0.0); // Yellow
+      vec3 outerColor = vec3(1.0, 0.0, 0.0); // orange/Red
+
+      return mix(innerColor, outerColor, t);
   }
 
 void main() {

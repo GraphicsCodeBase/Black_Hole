@@ -165,6 +165,7 @@ struct RayState{
       return mix(innerColor, outerColor, t);
   }
 
+//main function
 void main() {
     // Get pixel coordinates
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -177,15 +178,14 @@ void main() {
     //convert pixel into world position.
     vec2 pixelPos = vec2(float(pixelCoord.x),float(pixelCoord.y));
 
- // Initialize ray in polar coordinates
-  vec2 polar = cartesianToPolar(pixelPos, u_blackHolePos);
+    // Initialize ray in polar coordinates
+    vec2 polar = cartesianToPolar(pixelPos, u_blackHolePos);
 
   RayState ray;
   ray.r = polar.x;          // Distance from black hole
   ray.theta = polar.y;      // Angle (radians)
 
   // Give ray an initial velocity (simulating light traveling toward/past the black hole)
-  // For now, let's simulate rays coming from the left side of the screen
   // Velocity should point to the right (positive x direction)
   vec2 radialDir = normalize(pixelPos - u_blackHolePos);  // Direction away from BH
   vec2 tangentialDir = vec2(-radialDir.y, radialDir.x);   // Perpendicular direction
@@ -203,11 +203,19 @@ void main() {
       int maxSteps = 100;           // Maximum integration steps
       float maxDistance = 1000.0;   // Escape distance
 
-
       // Trace the ray
       vec4 color = vec4(0.6, 0.8, 1.0, 1.0);  // Default: pastel blue background
 
       for (int step = 0; step < maxSteps; step++) {
+           //convert ray position to cartesian coords.
+           vec2 rayCartesian = polarToCartesian(ray.r, ray.theta, u_blackHolePos);
+
+           if(hitDisk(rayCartesian))
+           {
+             color = vec4(getDiskColor(ray.r),1.0);
+             break;
+           }
+
           // Check if ray hit event horizon
           if (ray.r < u_Rs) {
               color = vec4(0.0, 0.0, 0.0, 1.0);  // BLACK

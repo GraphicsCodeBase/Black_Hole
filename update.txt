@@ -1,0 +1,206 @@
+ ---
+  BLACK HOLE SIMULATION - SESSION NOTES
+
+  Project Location: C:\Users\Micro\Desktop\Personal_Projects\SUPER_SECRET_ROJECT_V2\BLACK_HOLE\Black_Hole
+
+  Current Status:  SUBMITTED TO GITHUB
+
+  Project is functional and submitted. Works as an educational black hole visualization.
+
+  What Currently Works:
+
+  - Black hole event horizon rendering (black sphere)
+  - Horizontal accretion disk (yellow-to-orange gradient) in XZ plane at Y=0
+  - Spacetime grid with gravitational warping (funnel effect)
+  - 3D camera controls (mouse drag to orbit, scroll to zoom, W/S keys)
+  - RK4 integration for geodesic equations
+  - Basic ray tracing with direct disk intersection
+
+  Coordinate System (IMPORTANT):
+
+  - Y-axis = UP (OpenGL standard)
+  - XZ plane = horizontal ground (Y=0)
+  - Black hole 3D position: (400, 0, 300) = (x, 0, z)
+  - Accretion disk: Horizontal plane at Y=0
+  - u_blackHolePos interpretation: vec2(x, z) where .x=400, .y=300
+
+  Key Files:
+
+  1. Main Application
+
+  - File: src/main.cpp
+  - Black hole setup: Lines 210-216 (position, mass, radius)
+  - Camera setup: Lines 219-221 (position, elevation, azimuth)
+  - Grid rendering: Lines 324-347 (warp strength = 400.0)
+
+  2. Compute Shader (Ray Tracing)
+
+  - File: Shaders/geodesic.comp
+  - Critical sections:
+    - Line 97: Black hole 3D center vec3(u_blackHolePos.x, 0.0, u_blackHolePos.y)
+    - Lines 118-154: intersectDisk() - direct disk intersection (Y=0 plane)
+    - Lines 173-196: calculateDerivatives() - geodesic equations (2D polar)
+    - Lines 198-223: rk4Step() - RK4 integration
+    - Lines 308-317: DIRECT HIT CHECK - bypasses light bending (this is why it looks flat)
+    - Lines 319-378: Geodesic tracing (only for rays that miss direct hit)
+
+  3. Grid Shader (Spacetime Warping)
+
+  - File: Shaders/grid.vert
+  - Warping logic: Lines 23-36 (warps in Y direction, checks distance in XZ plane)
+
+  4. Camera
+
+  - File: Headers/Camera.hpp
+  - Max radius: 2000.0f (line changed from 500.0f for better zoom)
+
+  Current Limitation:
+
+  Why it looks like "sphere + flat disk" instead of Interstellar:
+
+  The shader does direct intersection first (line 310-317 in geodesic.comp):
+  if (intersectDisk(rayOrigin3D, rayDir, diskHitDist)) {
+      // Returns immediately - NO LIGHT BENDING
+      return;
+  }
+
+  Only rays that miss the direct hit get traced through curved geodesics (lines 319+), and even then it converts to 2D polar coordinates (line 322), losing 3D information.
+
+  ---
+  NEXT SESSION GOAL: Implement Full Gravitational Lensing
+
+  Implementation Plan (12-16 hours total):
+
+  Step 1: Remove Direct Intersection Shortcut (30 mins)
+
+  File: Shaders/geodesic.comp lines 308-317
+
+  Delete or comment out:
+  // === STEP 3: Check for immediate disk intersection ===
+  // DELETE THIS ENTIRE BLOCK (lines 308-317)
+
+  Step 2: Create 3D Ray Structure (1-2 hours)
+
+  File: Shaders/geodesic.comp around line 30
+
+  Replace the 2D RayState struct with 3D version:
+  struct Ray3D {
+      vec3 position;      // 3D position in space
+      vec3 velocity;      // 3D velocity vector
+  };
+
+  Step 3: Implement 3D Geodesic Equations (3-4 hours)
+
+  File: Shaders/geodesic.comp lines 173-196
+
+  Rewrite calculateDerivatives() to use 3D Schwarzschild metric:
+  vec3 calculateGravitationalAcceleration(vec3 pos, vec3 bhCenter, float Rs) {
+      vec3 toBH = bhCenter - pos;
+      float r = length(toBH);
+
+      if (r < Rs * 1.1) return vec3(0.0); // Near event horizon
+
+      // Schwarzschild metric acceleration (simplified)
+      float G = 1.0;
+      float mass = (Rs * C * C) / (2.0 * G);
+      float factor = (G * mass / (r * r * r)) * (1.0 - 1.5 * Rs / r);
+
+      return toBH * factor;
+  }
+
+  Step 4: Rewrite Main Ray Tracing Loop (3-4 hours)
+
+  File: Shaders/geodesic.comp lines 319-378
+
+  Replace 2D polar tracing with 3D Cartesian:
+  // Initialize 3D ray
+  Ray3D ray;
+  ray.position = rayOrigin3D;
+  ray.velocity = normalize(rayDir) * C;
+
+  // Trace through curved spacetime
+  for (int step = 0; step < maxSteps; step++) {
+      vec3 oldPos = ray.position;
+
+      // RK4 integration step (3D)
+      ray = rk4Step_3D(ray, deltaTime);
+
+      vec3 newPos = ray.position;
+
+      // Check if crossed disk plane (Y=0)
+      if (oldPos.y * newPos.y < 0.0) {
+          // Interpolate exact crossing point
+          float t = oldPos.y / (oldPos.y - newPos.y);
+          vec3 crossPoint = mix(oldPos, newPos, t);
+
+          // Check if within disk bounds (XZ plane)
+          vec2 diskPos = crossPoint.xz;
+          float dist = length(diskPos - u_blackHolePos);
+
+          if (dist >= u_Rs * diskInnerMultiplier &&
+              dist <= u_Rs * diskOuterMultiplier) {
+              // HIT DISK! Calculate color
+              color = vec4(getDiskColor(dist), 1.0);
+              break;
+          }
+      }
+
+      // Check event horizon
+      float r = length(ray.position - bhCenter3D);
+      if (r < u_Rs) {
+          color = vec4(0.0, 0.0, 0.0, 1.0);
+          break;
+      }
+
+      // Check escape
+      if (r > maxDistance) {
+          // Background color
+          break;
+      }
+  }
+
+  Step 5: Tune Parameters (2-3 hours)
+
+  File: Shaders/geodesic.comp line ~342-344
+
+  Adjust for accuracy:
+  float deltaTime = 0.02;      // Smaller = more accurate (was 0.1)
+  int maxSteps = 400;          // More steps (was 100)
+  float maxDistance = 2000.0;  // Larger escape radius
+
+  Step 6: Implement 3D RK4 Integration (2-3 hours)
+
+  File: Shaders/geodesic.comp
+
+  Rewrite RK4 for 3D vectors instead of RayState struct.
+
+  ---
+  Key Physics Concepts to Remember:
+
+  1. Schwarzschild Metric: Describes spacetime curvature around non-rotating black hole
+  2. Geodesic Equations: Path that light follows through curved spacetime
+  3. RK4 Integration: Numerical method to solve differential equations
+  4. Impact Parameter: How close a ray passes to the black hole determines bending
+
+  Expected Visual Result After Implementation:
+
+  - Accretion disk visible from multiple angles (above, below, behind)
+  - Einstein ring around black hole
+  - Light from behind black hole bends around to camera
+  - Distinctive "Interstellar" warped appearance
+
+  Build Command:
+
+  cmake --build out/build/x64-Debug
+  ./out/build/x64-Debug/Black_Hole.exe
+
+  Reference Code (for comparison):
+
+  C:\Users\Micro\Downloads\black_hole-main\black_hole-main\black_hole.cpp
+
+  ---
+  Status: Paused for future improvements
+  Priority: Implement full 3D gravitational lensing
+  Estimated effort: 2-3 focused work days
+
+  Good luck with the next session! 

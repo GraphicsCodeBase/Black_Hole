@@ -20,19 +20,19 @@ void main() {
     vec4 worldPosition = u_Model * vec4(aPos, 1.0);
     worldPos = worldPosition.xyz;
 
-    // Calculate distance from black hole (in XY plane)
-    vec2 toBlackHole = worldPos.xy - u_blackHolePos;
+    // Calculate distance from black hole (in XZ plane - horizontal plane)
+    vec2 toBlackHole = worldPos.xz - u_blackHolePos;
     distFromBlackHole = length(toBlackHole);
 
     // Apply gravitational warping (creates the "funnel" effect)
-    // The closer to the black hole, the more it pulls down (negative Z)
+    // The closer to the black hole, the more it pulls down (negative Y)
     if (distFromBlackHole > u_Rs) {
         // Warping formula: deeper near black hole, flattens out further away
         float warp = -u_warpStrength * u_Rs / distFromBlackHole;
-        worldPosition.z += warp;
+        worldPosition.y += warp;
     } else {
         // Inside event horizon: pull down maximally
-        worldPosition.z -= u_warpStrength * 2.0;
+        worldPosition.y -= u_warpStrength * 2.0;
     }
 
     // Update world position after warping

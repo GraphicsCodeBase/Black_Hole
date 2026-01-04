@@ -15,7 +15,7 @@ public:
 
     // View constraints
     float minRadius = 50.0f;
-    float maxRadius = 500.0f;
+    float maxRadius = 2000.0f;  // Increased for better zooming
     float minElevation = -1.4f;  // ~-80 degrees
     float maxElevation = 1.4f;   // ~+80 degrees
 

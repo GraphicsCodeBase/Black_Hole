@@ -18,9 +18,13 @@ uniform float u_Rs;
 //screen params
 uniform vec2 u_screenSize;
 
+//camera params
+uniform vec3 u_cameraPos;      // 3D camera position
+uniform float u_cameraFOV;     // Field of view in degrees
+
 //basic const expressions
-const float diskInnerMultiplier = 2.0;
-const float diskOuterMultiplier = 5.0;
+const float diskInnerMultiplier = 2.5;   // Disk starts closer for thicker appearance
+const float diskOuterMultiplier = 10.0;  // Disk extends further - more visible
 
 //ray state
 struct RayState{
@@ -70,6 +74,100 @@ struct RayState{
 
       // Add black hole position to get world coordinates
       return vec2(blackHolePos.x + x, blackHolePos.y + y);
+  }
+  // Generate a 3D ray direction from camera through a pixel
+  // This accounts for camera orientation!
+  vec3 generateRayDirection(vec2 pixelCoord, vec2 screenSize)
+  {
+      // Convert pixel to normalized device coordinates (-1 to +1)
+      float u = (2.0 * pixelCoord.x / screenSize.x - 1.0);
+      float v = (2.0 * pixelCoord.y / screenSize.y - 1.0);
+
+      // Account for aspect ratio
+      float aspectRatio = screenSize.x / screenSize.y;
+      u *= aspectRatio;
+
+      // Account for field of view
+      float tanHalfFov = tan(radians(u_cameraFOV) / 2.0);
+      u *= tanHalfFov;
+      v *= tanHalfFov;
+
+      // === NEW: Calculate camera orientation vectors ===
+      // Camera always looks at black hole center (in 3D on ground plane Y=0)
+      vec3 blackHoleCenter3D = vec3(u_blackHolePos.x, 0.0, u_blackHolePos.y);
+
+      // Forward: camera to black hole
+      vec3 forward = normalize(blackHoleCenter3D - u_cameraPos);
+
+      // Right: perpendicular to forward and world up
+      vec3 worldUp = vec3(0.0, 1.0, 0.0);
+      vec3 right = normalize(cross(forward, worldUp));
+
+      // Up: perpendicular to forward and right
+      vec3 up = cross(right, forward);
+
+      // Build ray direction using camera's orientation
+      vec3 rayDir = normalize(forward + u * right + v * up);
+
+      return rayDir;
+  }
+
+  // Check if a 3D ray intersects the accretion disk
+  // The disk is a flat plane at Y = 0 (horizontal, like the grid)
+  // Returns true if hit, and outputs the distance from black hole center
+  bool intersectDisk(vec3 rayOrigin, vec3 rayDir, out float hitDistance) {
+      // Disk is in the XZ plane at Y = 0 (horizontal)
+      // Ray equation: position = rayOrigin + t * rayDir
+      // At disk plane: position.y = 0
+      // Solve: rayOrigin.y + t * rayDir.y = 0
+
+      // Check if ray is parallel to disk (rayDir.y ≈ 0)
+      if (abs(rayDir.y) < 0.0001) {
+          return false;  // Ray never crosses the plane
+      }
+
+      // Calculate where ray crosses Y = 0 plane
+      float t = -rayOrigin.y / rayDir.y;
+
+      // Check if intersection is in front of ray (t > 0)
+      if (t < 0.0) {
+          return false;  // Intersection is behind the ray origin
+      }
+
+      // Calculate the 3D intersection point
+      vec3 hitPoint = rayOrigin + t * rayDir;
+
+      // Check if hit point is within disk radius bounds
+      // Distance from black hole center (in XZ plane, Y=0)
+      vec2 diskCenter = u_blackHolePos;
+      float distFromCenter = length(hitPoint.xz - diskCenter);
+
+      float innerRadius = u_Rs * diskInnerMultiplier;
+      float outerRadius = u_Rs * diskOuterMultiplier;
+
+      if (distFromCenter >= innerRadius && distFromCenter <= outerRadius) {
+          hitDistance = distFromCenter;  // Store distance for color calculation
+          return true;
+      }
+
+      return false;
+  }
+
+  // Calculate shading based on viewing angle (makes disk look 3D)
+  // This simulates Lambertian (diffuse) lighting
+  float calculateDiskShading(vec3 rayDir) {
+      // Disk normal points up (in +Y direction for a horizontal disk in XZ plane)
+      vec3 diskNormal = vec3(0.0, 1.0, 0.0);
+
+      // Calculate angle between ray and disk surface
+      // dot product: 1.0 = looking straight down at disk, 0.0 = edge-on view
+      float viewAngle = abs(dot(normalize(rayDir), diskNormal));
+
+      // Add ambient + diffuse lighting
+      float ambient = 0.3;   // Minimum brightness (even at edges)
+      float diffuse = 0.7;   // Angle-dependent brightness
+
+      return ambient + diffuse * viewAngle;
   }
 
   // Calculate derivatives (geodesic equations)
@@ -158,14 +256,14 @@ struct RayState{
       //normalise the distance 
       float t = (r - innerRadius) / (outerRadius - innerRadius);
 
-      //define the two colors.
-      vec3 innerColor = vec3(1.0, 1.0, 0.0); // Yellow
-      vec3 outerColor = vec3(1.0, 0.0, 0.0); // orange/Red
+      //define the two colors (more yellow like reference)
+      vec3 innerColor = vec3(1.0, 1.0, 0.3); // Bright yellow
+      vec3 outerColor = vec3(1.0, 0.8, 0.0); // Orange-yellow (less red)
 
       return mix(innerColor, outerColor, t);
   }
 
-//main function
+//main function - NOW WITH 3D RAY TRACING!
 void main() {
     // Get pixel coordinates
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -175,63 +273,110 @@ void main() {
     if (pixelCoord.x >= size.x || pixelCoord.y >= size.y)
         return;
 
-    //convert pixel into world position.
-    vec2 pixelPos = vec2(float(pixelCoord.x),float(pixelCoord.y));
+    // === STEP 1: Generate 3D ray from camera through this pixel ===
+    vec2 pixelPos = vec2(float(pixelCoord.x), float(pixelCoord.y));
+    vec3 rayDir = generateRayDirection(pixelPos, u_screenSize);
 
-    // Initialize ray in polar coordinates
-    vec2 polar = cartesianToPolar(pixelPos, u_blackHolePos);
+    // Ray starts at camera position in 3D space
+    vec3 rayOrigin3D = u_cameraPos;
 
-  RayState ray;
-  ray.r = polar.x;          // Distance from black hole
-  ray.theta = polar.y;      // Angle (radians)
+    // === STEP 2: Check if ray hits black hole directly ===
+    // Calculate distance from ray origin to black hole center in XZ plane (horizontal plane)
+    vec2 rayOrigin2D_check = rayOrigin3D.xz;
+    vec2 blackHolePos2D = u_blackHolePos;
+    float distFromBH = length(rayOrigin2D_check - blackHolePos2D);
 
-  // Give ray an initial velocity (simulating light traveling toward/past the black hole)
-  // Velocity should point to the right (positive x direction)
-  vec2 radialDir = normalize(pixelPos - u_blackHolePos);  // Direction away from BH
-  vec2 tangentialDir = vec2(-radialDir.y, radialDir.x);   // Perpendicular direction
+    // If camera is outside event horizon, check if ray points toward it
+    if (distFromBH > u_Rs) {
+        // Project black hole center onto ray to find closest approach
+        vec3 bhCenter3D = vec3(u_blackHolePos.x, 0.0, u_blackHolePos.y);
+        vec3 toBH = bhCenter3D - rayOrigin3D;
+        float t = dot(toBH, rayDir);
 
-  // Initial velocity: mostly tangential (sideways past black hole), like light passing by
-  float speed = C;  // Speed of light
-  vec2 velocity = tangentialDir * speed;  // Moving perpendicular to radial direction
+        if (t > 0.0) {  // Ray points toward black hole
+            vec3 closestPoint = rayOrigin3D + rayDir * t;
+            float closestDist = length(closestPoint - bhCenter3D);
 
-  // Convert velocity to polar components
-  ray.dr_dlambda = 0.0;  // No radial motion initially (moving tangentially)
-  ray.dtheta_dlambda = speed / ray.r;  // Angular velocity = v / r
+            // If ray passes through event horizon, it's black!
+            if (closestDist < u_Rs) {
+                imageStore(outputTexture, pixelCoord, vec4(0.0, 0.0, 0.0, 1.0));
+                return;
+            }
+        }
+    }
+
+    // === STEP 3: Check for immediate disk intersection (before gravitational bending) ===
+    float diskHitDist = 0.0;
+    if (intersectDisk(rayOrigin3D, rayDir, diskHitDist)) {
+        // Ray hit the disk directly! Calculate color with 3D shading
+        vec3 diskColor = getDiskColor(diskHitDist);
+        float shading = calculateDiskShading(rayDir);
+        vec4 color = vec4(diskColor * shading, 1.0);  // Apply shading to color
+        imageStore(outputTexture, pixelCoord, color);
+        return;
+    }
+
+    // === STEP 3: If no direct hit, trace ray through curved spacetime ===
+    // Convert 3D ray position to 2D for geodesic tracing
+    // (We're simplifying: project 3D position onto XY plane for polar coordinates)
+    vec2 rayOrigin2D = rayOrigin3D.xy;
+    vec2 polar = cartesianToPolar(rayOrigin2D, u_blackHolePos);
+
+    // Initialize ray state in polar coordinates
+    RayState ray;
+    ray.r = polar.x;          // Distance from black hole
+    ray.theta = polar.y;      // Angle (radians)
+
+    // Convert 3D ray direction to 2D polar velocity
+    // Project ray direction onto XY plane
+    vec2 rayDir2D = normalize(rayDir.xy);
+    vec2 radialDir = normalize(rayOrigin2D - u_blackHolePos);  // Direction away from BH
+    vec2 tangentialDir = vec2(-radialDir.y, radialDir.x);      // Perpendicular
+
+    // Decompose ray direction into radial and tangential components
+    float speed = C;  // Speed of light
+    ray.dr_dlambda = dot(rayDir2D, radialDir) * speed;         // Radial velocity
+    ray.dtheta_dlambda = dot(rayDir2D, tangentialDir) * speed / ray.r;  // Angular velocity
 
     // Ray tracing parameters
-      float deltaTime = 0.1;        // Integration time step
-      int maxSteps = 100;           // Maximum integration steps
-      float maxDistance = 1000.0;   // Escape distance
+    float deltaTime = 0.1;        // Integration time step
+    int maxSteps = 100;           // Maximum integration steps
+    float maxDistance = 1000.0;   // Escape distance
 
-      // Trace the ray
-      vec4 color = vec4(0.6, 0.8, 1.0, 1.0);  // Default: pastel blue background
+    // Default background color
+    vec4 color = vec4(0.6, 0.8, 1.0, 1.0);  // Pastel blue
 
-      for (int step = 0; step < maxSteps; step++) {
-           //convert ray position to cartesian coords.
-           vec2 rayCartesian = polarToCartesian(ray.r, ray.theta, u_blackHolePos);
+    // === STEP 4: Trace ray through curved spacetime ===
+    for (int step = 0; step < maxSteps; step++) {
+        // Convert current ray position back to Cartesian
+        vec2 rayCartesian = polarToCartesian(ray.r, ray.theta, u_blackHolePos);
 
-           if(hitDisk(rayCartesian))
-           {
-             color = vec4(getDiskColor(ray.r),1.0);
-             break;
-           }
+        // Check if ray crossed the disk plane during this step
+        // (For now, use simple 2D disk check - you can upgrade this later)
+        if (hitDisk(rayCartesian)) {
+            vec3 diskColor = getDiskColor(ray.r);
+            // Estimate shading based on ray direction (simplified)
+            float shading = 0.7;  // Medium brightness for bent rays
+            color = vec4(diskColor * shading, 1.0);
+            break;
+        }
 
-          // Check if ray hit event horizon
-          if (ray.r < u_Rs) {
-              color = vec4(0.0, 0.0, 0.0, 1.0);  // BLACK
-              break;
-          }
+        // Check if ray hit event horizon
+        if (ray.r < u_Rs) {
+            color = vec4(0.0, 0.0, 0.0, 1.0);  // BLACK
+            break;
+        }
 
-          // Check if ray escaped to infinity
-          if (ray.r > maxDistance) {
-              // Keep background color
-              break;
-          }
+        // Check if ray escaped to infinity
+        if (ray.r > maxDistance) {
+            // Keep background color
+            break;
+        }
 
-          // Integrate one step forward
-          ray = rk4Step(ray, deltaTime);
-      }
+        // Integrate one step forward using RK4
+        ray = rk4Step(ray, deltaTime);
+    }
 
-      // Write final color to texture
-      imageStore(outputTexture, pixelCoord, color);
+    // Write final color to texture
+    imageStore(outputTexture, pixelCoord, color);
 }

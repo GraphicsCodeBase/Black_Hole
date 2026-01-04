@@ -43,6 +43,13 @@ void Mesh::draw_Circle()
     glBindVertexArray(0);
 }
 
+void Mesh::draw_Lines()
+{
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_LINES, 0, vertexCount);
+    glBindVertexArray(0);
+}
+
 std::vector<float> Mesh::generateCircleVertices(float radius, int segments)
 {
     std::vector<float> vertices;
@@ -93,5 +100,47 @@ void Mesh::setColor(glm::vec4 color_in)
 glm::vec4 Mesh::getColor()
 {
     return color;
+}
+
+std::vector<float> Mesh::generateGridVertices(float size, int divisions)
+{
+    std::vector<float> vertices;
+
+    // Create a grid of lines in the XY plane (Z=0)
+    // Lines go in both X and Y directions
+    float step = size / divisions;
+    float halfSize = size / 2.0f;
+
+    // Horizontal lines (along X axis)
+    for (int i = 0; i <= divisions; ++i)
+    {
+        float y = -halfSize + i * step;
+
+        // Line from (-halfSize, y, 0) to (halfSize, y, 0)
+        vertices.push_back(-halfSize);  // x
+        vertices.push_back(y);          // y
+        vertices.push_back(0.0f);       // z
+
+        vertices.push_back(halfSize);   // x
+        vertices.push_back(y);          // y
+        vertices.push_back(0.0f);       // z
+    }
+
+    // Vertical lines (along Y axis)
+    for (int i = 0; i <= divisions; ++i)
+    {
+        float x = -halfSize + i * step;
+
+        // Line from (x, -halfSize, 0) to (x, halfSize, 0)
+        vertices.push_back(x);          // x
+        vertices.push_back(-halfSize);  // y
+        vertices.push_back(0.0f);       // z
+
+        vertices.push_back(x);          // x
+        vertices.push_back(halfSize);   // y
+        vertices.push_back(0.0f);       // z
+    }
+
+    return vertices;
 }
 

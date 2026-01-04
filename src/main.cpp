@@ -13,19 +13,73 @@ std::string fragShader = "../../../Shaders/main.frag";
 std::string QuadfragShader = "../../../Shaders/quad.frag";
 std::string QuadvertShader = "../../../Shaders/quad.vert";
 std::string CompShader = "../../../Shaders/geodesic.comp";
+std::string GridvertShader = "../../../Shaders/grid.vert";
+std::string GridfragShader = "../../../Shaders/grid.frag";
 
-// Camera and mouse tracking
-Camera camera(glm::vec3(400.0f, 300.0f, 0.0f), 300.0f);
 bool mousePressed = false;
 double lastX = 400.0, lastY = 300.0;
 bool firstMouse = true;
 
-//======================== 
+// Global camera pointer for callbacks
+Camera* g_camera = nullptr;
+
+//========================
 //========================
 // Callback to adjust viewport on window resize
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
+}
+
+// Mouse button callback - track when mouse is pressed/released
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT)
+    {
+        if (action == GLFW_PRESS)
+        {
+            mousePressed = true;
+            firstMouse = true;  // Reset on new drag
+        }
+        else if (action == GLFW_RELEASE)
+        {
+            mousePressed = false;
+        }
+    }
+}
+
+// Mouse movement callback - orbit camera when dragging
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (!mousePressed || !g_camera)
+        return;
+
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+        return;
+    }
+
+    // Calculate mouse movement delta
+    float deltaX = static_cast<float>(xpos - lastX);
+    float deltaY = static_cast<float>(lastY - ypos);  // Reversed: y goes from bottom to top
+
+    lastX = xpos;
+    lastY = ypos;
+
+    // Update camera based on mouse drag
+    g_camera->processMouseDrag(deltaX, deltaY);
+}
+
+// Mouse scroll callback - zoom in/out
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    if (g_camera)
+    {
+        g_camera->processMouseScroll(static_cast<float>(yoffset));
+    }
 }
 
 void renderTrail(const std::vector<glm::vec2>& trail, Shader& shader, const glm::mat4& projection)
@@ -105,9 +159,12 @@ int main()
         return -1;
     }
 
-    // Set viewport and callback
+    // Set viewport and callbacks
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     float screenWidth = 800.0f;
     float screenHeight = 600.0f;
@@ -131,9 +188,15 @@ int main()
 	std::string quadFragCode = Shader::LoadShaderFromFile(QuadfragShader);
 	Shader quadShader(quadVertCode, quadFragCode);
 
-    //convert the comp shader into a string 
+    //convert the comp shader into a string
 	std::string computeCode = Shader::LoadShaderFromFile(CompShader);
 	Shader computeShader(computeCode, true);
+
+    // Load grid shader for spacetime visualization
+    std::string gridVertCode = Shader::LoadShaderFromFile(GridvertShader);
+    std::string gridFragCode = Shader::LoadShaderFromFile(GridfragShader);
+    Shader gridShader(gridVertCode, gridFragCode);
+    std::cout << "Grid shader loaded successfully\n";
 
     //generate a quad to will up the window.
 	Graphics graphics(static_cast<int>(screenWidth), static_cast<int>(screenHeight));
@@ -151,11 +214,43 @@ int main()
     float desiredRs = 40.0f;
     double mass = (desiredRs * C * C) / (2.0 * G);
     BlackHole blackHole(glm::vec2(x, y), mass);
+    // Camera and mouse tracking
+    // Camera orbits around black hole at (x, 0, y) on the ground plane
+    Camera camera(glm::vec3(x, 0.0f, y), 650.0f);
+    camera.elevation = 1.3f;   // Look down from above to see horizontal disk
+    camera.azimuth = 0.8f;     // Diagonal view like reference
+
+    // Set global camera pointer for callbacks
+    g_camera = &camera;
 
     std::cout << "=== BLACK HOLE INFO ===\n";
     std::cout << "Position: (" << x << ", " << y << ")\n";
     std::cout << "Schwarzschild Radius: " << blackHole.schwarzschildRadius << " pixels\n";
-    std::cout << "Photon sphere: " << blackHole.schwarzschildRadius * 1.5f << " pixels\n\n";
+    std::cout << "Photon sphere: " << blackHole.schwarzschildRadius * 1.5f << " pixels\n";
+    std::cout << "\n=== CAMERA INFO ===\n";
+    std::cout << "Camera Position: (" << camera.getPosition().x << ", "
+              << camera.getPosition().y << ", " << camera.getPosition().z << ")\n";
+    std::cout << "Camera FOV: " << camera.fov << " degrees\n";
+    std::cout << "\n=== CONTROLS ===\n";
+    std::cout << "LEFT CLICK + DRAG: Orbit camera around black hole\n";
+    std::cout << "SCROLL WHEEL: Zoom in/out\n";
+    std::cout << "W/S KEYS: Zoom in/out\n";
+    std::cout << "ESC: Close window\n\n";
+
+    // Create spacetime grid mesh
+    float gridSize = 1500.0f;  // LARGER grid to show more spacetime
+    int gridDivisions = 50;     // 50x50 grid (finer detail)
+    auto gridVertices = Mesh::generateGridVertices(gridSize, gridDivisions);
+    Mesh gridMesh(
+        gridVertices.data(),
+        gridVertices.size() * sizeof(float),
+        static_cast<GLsizei>(gridVertices.size() / 3),
+        { {0, 3} },  // Only position attribute (vec3)
+        3 * sizeof(float)
+    );
+
+    std::cout << "Grid created: " << gridDivisions << "x" << gridDivisions
+              << " (" << gridVertices.size() / 3 << " vertices)\n";
 
     //std::vector<LightRay> lightRays;
 
@@ -194,9 +289,13 @@ int main()
     // Main render loop
     while (!glfwWindowShouldClose(window))
     {
-        // Clear screen to pastel blue
-        glClearColor(0.6f, 0.8f, 1.0f, 1.0f); // pastel blue RGBA
-        glClear(GL_COLOR_BUFFER_BIT);
+        // Process keyboard input (W/S to zoom)
+        float deltaTime = 0.016f;  // ~60 FPS
+        camera.processKeyboard(window, deltaTime);
+
+        // Clear screen to PURE BLACK background (like reference)
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Pure black
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//bind compute shader
         computeShader.Use();
@@ -206,6 +305,10 @@ int main()
         computeShader.SetFloat("u_mass", static_cast<float>(mass));
         computeShader.SetFloat("u_Rs", static_cast<float>(blackHole.schwarzschildRadius));
         computeShader.SetVec2("u_screenSize", glm::vec2(screenWidth, screenHeight));
+
+        glm::vec3 camPos = camera.getPosition();
+        computeShader.SetVec3("u_cameraPos", camPos);
+        computeShader.SetFloat("u_cameraFOV", camera.fov);
 
         glBindImageTexture(0, graphics.getTexture(),0,GL_FALSE,0, GL_WRITE_ONLY, GL_RGBA8);
 
@@ -218,62 +321,33 @@ int main()
 
         graphics.renderQuad(quadShader);
 
-        float deltaTime = 0.008f;  // ~60 FPS
-        static int debugCounter = 0;
-        debugCounter++;
-        //for (int i = 0; i < lightRays.size(); i++)
-        //{
-        //    auto& ray = lightRays[i];
+        // === Render spacetime grid with warping ===
+        // Enable blending for transparency
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_DEPTH_TEST);
 
-        //    // DEBUG: Print before step
-        //    if (debugCounter == 1 && i == 0)  // First frame, first ray
-        //    {
-        //        std::cout << "BEFORE step - Ray 0:\n";
-        //        std::cout << "  Position: (" << ray.position.x << ", " << ray.position.y << ")\n";
-        //        std::cout << "  r=" << ray.r << ", theta=" << ray.theta << "\n";
-        //        std::cout << "  dr_dlambda=" << ray.dr_dlambda << ", dtheta_dlambda=" << ray.dtheta_dlambda << "\n";
-        //        std::cout << "  active=" << ray.active << "\n";
-        //    }
+        gridShader.Use();
 
-        //    if (ray.active)
-        //    {
-        //        ray.step(deltaTime, blackHole);
-        //    }
+        // Set transformation matrices
+        glm::mat4 gridModel = glm::mat4(1.0f);
+        gridModel = glm::translate(gridModel, glm::vec3(x, 0.0f, y));  // Center grid at black hole on ground plane
+        gridModel = glm::rotate(gridModel, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));  // Rotate to stand upright
 
-        //    // DEBUG: Print after step
-        //    if (debugCounter == 1 && i == 0)  // First frame, first ray
-        //    {
-        //        std::cout << "\nAFTER step - Ray 0:\n";
-        //        std::cout << "  Position: (" << ray.position.x << ", " << ray.position.y << ")\n";
-        //        std::cout << "  r=" << ray.r << ", theta=" << ray.theta << "\n";
-        //        std::cout << "  Trail size: " << ray.trail.size() << "\n\n";
-        //    }
-        //}
+        gridShader.SetMat4("u_Model", gridModel);
+        gridShader.SetMat4("u_View", camera.getViewMatrix());
+        gridShader.SetMat4("u_Projection", camera.getProjectionMatrix(screenWidth / screenHeight));
 
-        ////bind shader
-        //mainShader.Use();
-        //// Build your transformation matrix (translate, rotate, scale)
-        //glm::mat4 model = glm::mat4(1.0f);
-        //model = glm::translate(model, glm::vec3(x, y, 0.0f));
-        //model = glm::scale(model, glm::vec3(radius, radius, 1.0f));
+        // Set grid-specific uniforms
+        gridShader.SetVec2("u_blackHolePos", glm::vec2(x, y));
+        gridShader.SetFloat("u_Rs", static_cast<float>(blackHole.schwarzschildRadius));
+        gridShader.SetFloat("u_warpStrength", 400.0f);  // MUCH stronger warp for deep funnel!
 
-        //mainShader.SetMat4("u_Model", model);
-        //mainShader.SetMat4("u_View", glm::mat4(1.0f));
-        //mainShader.SetMat4("u_Projection", projection);
-        //mainShader.SetVec4("u_Color", circleMesh.getColor());
-        //circleMesh.draw_Circle();
+        // Draw grid as lines
+        gridMesh.draw_Lines();
 
-        //// RENDER ALL LIGHT RAY TRAILS
-        //for (const auto& ray : lightRays)
-        //{
-        //    if (ray.trail.size() > 1)  // Only render if there's a trail
-        //    {
-        //        renderTrail(ray.trail, mainShader, projection);
-        //    }
-        //}
-
-        //triangle.draw();
-        //quad.draw();
+        glDisable(GL_BLEND);
+        glDisable(GL_DEPTH_TEST);
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);

@@ -18,10 +18,14 @@ class Mesh
 
 	void draw();
 	void draw_Circle();
+	void draw_Lines();  // For rendering grid as lines
 
 	static std::vector<float> generateCircleVertices(float radius, int segments);
 
 	static std::vector<float> generateQuadVertices();
+
+	// Generate a 3D grid mesh for spacetime visualization
+	static std::vector<float> generateGridVertices(float size, int divisions);
 
 	void setColor(glm::vec4 color_in);
 	glm::vec4 getColor();
